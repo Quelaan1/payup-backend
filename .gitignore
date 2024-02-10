@@ -36,5 +36,5 @@ dev.Dockerfile
 .venv
 
 # local files
-__pycache__
-.idea
+__pycache__/
+.idea/
