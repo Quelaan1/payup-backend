@@ -35,10 +35,4 @@ async def verify_pan_endpoint(
             detail="PAN verification failed",
         )
     if verification.status == 200:
-        if verification.Data.Status == "VALID":
-            return PANVerifyResponseSchema(message="PAN verified successfully")
-        elif verification.status == "INVALID":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="PAN verification failed",
-            )
+        return PANVerifyResponseSchema(message=verification.Data.Status)
