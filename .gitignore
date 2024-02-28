@@ -25,7 +25,6 @@ go.work
 .env
 .env.*
 ssl.sh
-*.toml
 .env.local
 .env.tls
 dev.Dockerfile
@@ -34,7 +33,9 @@ dev.Dockerfile
 *.pem
 .vscode
 .venv
+flyway.toml
 
 # local files
 __pycache__/
 .idea/
+*.ipynb
