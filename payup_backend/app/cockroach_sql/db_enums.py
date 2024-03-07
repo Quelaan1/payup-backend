@@ -7,6 +7,11 @@ class KycType(enum.Enum):
     GSTN = 3
 
 
+class VerifierType(enum.Enum):
+    FIREBASE = 1
+    TWILIO = 2
+
+
 def get_kyc_type_name(kyc_type_value: int):
     """Converts a KYC type integer value to its human-readable form."""
     try:

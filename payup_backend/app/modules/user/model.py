@@ -11,14 +11,11 @@ class UserBase(BaseModel):
         from_attributes=True, revalidate_instances="always", validate_assignment=True
     )
 
-    phone_number: str
-
 
 class UserUpdate(UserBase):
     email: Annotated[Optional[EmailStr], Field(None, examples=list("dummy@email.com"))]
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    m_pin: Optional[SecretStr] = None
 
 
 class UserCreate(UserUpdate):

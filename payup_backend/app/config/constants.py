@@ -4,10 +4,6 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class ConfigError(Exception):
-    """Custom exception for configuration errors."""
-
-
 class SandboxSettings(BaseSettings):
     """creates a singleton constants instance"""
 

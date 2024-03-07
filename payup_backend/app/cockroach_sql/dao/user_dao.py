@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, insert, delete, update, Connection, Column
 
 from ...modules.user.model import UserCreate, UserUpdate, User as UserModel
-from ..schemas import pwd_context, User as UserSchema
+from ..schemas import pwd_context, User as UserSchema, Verifier as VerifierSchema
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,10 +33,9 @@ class UserRepo:
 
     def create_obj(self, session: Session, p_model: UserCreate) -> UserModel:
         # stmt = insert(UserSchema).values(**p_model.model_dump(), owner_id=user_id)
-        db_model = self._schema(**p_model.model_dump(exclude=["m_pin"]))
-        if p_model.m_pin is not None:
-            db_model.set_password(p_model.m_pin.get_secret_value())
+        db_model = self._schema(**p_model.model_dump(exclude=[""]))
         db_model.is_active = True
+
         logger.info("db_model : %s", db_model)
         session.add(db_model)
         session.commit()
@@ -48,9 +47,7 @@ class UserRepo:
         return p_resp
 
     def create_user_item_2(self, conn: Connection, p_model: UserCreate) -> UserModel:
-        db_model = self._schema(**p_model.model_dump(exclude=["m_pin"]))
-        if p_model.m_pin is not None:
-            db_model.set_password(p_model.m_pin.get_secret_value())
+        db_model = self._schema(**p_model.model_dump())
         db_model.is_active = True
 
         model_data = {
@@ -60,11 +57,7 @@ class UserRepo:
         }
         logger.info("[model data]-[%s]", model_data)
 
-        # Prepare the insert statement
         stmt = insert(self._schema).values(**model_data)
-        # Prepare the insert statement
-
-        # Execute the statement directly using the connection
         res = conn.execute(stmt)
 
         # Convert the result to a Pydantic model
@@ -100,9 +93,7 @@ class UserRepo:
         db_models = session.execute(stmt).scalars().all()
         return [UserModel.model_validate(db_model) for db_model in db_models]
 
-    def get_user_txn(
-        self, session: Session, phone_number: str = None, user_id: UUID = None
-    ):
+    def get_user_txn(self, session: Session, phone_number: str):
         """
         Select a row of the users table, and return the row as a User object.
 
@@ -116,14 +107,14 @@ class UserRepo:
         Returns:
             User -- A User object.
         """
-        if phone_number:
-            stmt = select(self._schema).filter(
-                self._schema.phone_number == phone_number
+        stmt = (
+            select(self._schema)
+            .join_from(
+                self._schema,
+                VerifierSchema,
+                VerifierSchema.user_id == self._schema.id,
             )
-        elif user_id:
-            stmt = select(self._schema).filter(self._schema.id == user_id)
-        else:
-            return None
-
+            .where(VerifierSchema.phone_number == phone_number)
+        )
         db_model = session.execute(stmt).scalars().first()
         return UserModel.model_validate(db_model) if db_model else None

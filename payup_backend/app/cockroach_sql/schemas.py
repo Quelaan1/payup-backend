@@ -30,11 +30,8 @@ class User(Base):
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4())
     email = Column(String, unique=True, index=True)
-    phone_number = Column(String, unique=True, index=True)
     first_name = Column(String)
     last_name = Column(String)
-    m_pin = Column(String)
-    phone_lock = Column(Boolean, default=False)
     is_active = Column(Boolean, default=False)
     kyc_complete = Column(Boolean, default=False)
     onboarded = Column(Boolean, default=False)
@@ -43,6 +40,19 @@ class User(Base):
         "KycEntity",
         back_populates="owner",
     )
+
+
+class Verifier(Base):
+    __tablename__ = "verifiers"
+    __table_args__ = {"schema": schema}
+
+    id = Column(UUID, primary_key=True, default=uuid.uuid4())
+    user_id = Column(UUID, ForeignKey(f"{schema}.users.id"))
+    phone_verifier = Column(Integer)
+    v_id = Column(String)  # verifier_id
+    phone_number = Column(String, unique=True, index=True)
+    m_pin = Column(String)
+    phone_lock = Column(Boolean, default=False)
 
     def set_password(self, password):
         """
@@ -61,18 +71,6 @@ class User(Base):
         Verify the password against the hashed password in the database.
         """
         return pwd_context.verify(password, self.m_pin)
-
-
-class Item(Base):
-    __tablename__ = "items"
-    __table_args__ = {"schema": schema}
-
-    id = Column(UUID, primary_key=True, default=uuid.uuid4())
-    title = Column(String, index=True)
-    description = Column(String, index=True)
-    owner_id = Column(UUID, ForeignKey(f"{schema}.users.id"))
-
-    # owner = relationship("User", back_populates="items")
 
 
 class KycEntity(Base):

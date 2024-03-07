@@ -1,10 +1,11 @@
 """interface to sandbox api"""
 
 import requests
-from ..modules.kyc.pan.pan_model import SandboxPANVerifyResponse
+from ....modules.kyc.pan.pan_model import SandboxPANVerifyResponse
 
 
 class Sandbox:
+    _base_url = "https://api.sandbox.co.in"
 
     def __init__(self, sandbox_api_key: str, sandbox_secret: str):
         self.api_key = sandbox_api_key
@@ -17,7 +18,7 @@ class Sandbox:
             print("API key or secret not found in environment variables.")
             return
 
-        url = "https://api.sandbox.co.in/authenticate"
+        url = f"{self._base_url}/authenticate"
         headers = {
             "accept": "application/json",
             "x-api-key": self.api_key,
@@ -38,7 +39,7 @@ class Sandbox:
             print("Failed to refresh token as authentication failed")
             return
 
-        url = "https://api.sandbox.co.in/authorize"
+        url = f"{self._base_url}/authorize"
         headers = {
             "accept": "application/json",
             "Authorization": self.access_token,
@@ -61,7 +62,7 @@ class Sandbox:
                 print("Cannot verify PAN as authentication failed")
                 return
 
-        url = f"https://api.sandbox.co.in/pans/{pan_number}/verify?consent=y&reason=For%20KYC%20of%20User"
+        url = f"{self._base_url}/pans/{pan_number}/verify?consent=y&reason=For%20KYC%20of%20User"
         headers = {
             "accept": "application/json",
             "Authorization": self.access_token,

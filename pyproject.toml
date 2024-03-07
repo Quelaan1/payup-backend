@@ -20,6 +20,7 @@ requests = "^2.31.0"
 twilio = "^9.0.0"
 pydantic = {extras = ["email"], version = "^2.6.3"}
 psycopg2 = "^2.9.9"
+firebase-admin = "^6.4.0"
 
 
 [build-system]

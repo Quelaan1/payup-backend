@@ -1,13 +1,14 @@
 """layer between router and data access operations. handles db connection, commit, rollback and close."""
 
 import logging
-from pydantic import UUID4
 from typing import Optional
+from pydantic import UUID4
 from sqlalchemy_cockroachdb import run_transaction
 from sqlalchemy.orm import sessionmaker
 
+from ...cockroach_sql.dao.verifier_dao import VerifierRepo
 from ...cockroach_sql.dao.user_dao import UserRepo
-from .model import UserCreate
+from .model import VerifierCreate
 from ...cockroach_sql.database import database, PoolConnection
 
 logging.basicConfig(
@@ -17,7 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class UserService:
+class VerifierService:
     """
     Wraps the database connection. The class methods wrap database transactions.
     """
@@ -30,66 +31,56 @@ class UserService:
             conn_string {String} -- CockroachDB connection string.
         """
         self.engine = database.engine
+        # self.connect = self.engine.connect()
         self.connect = PoolConnection()
 
         self.sessionmaker = sessionmaker(bind=self.engine)
-        self._repo = UserRepo()
+        self._repo = VerifierRepo()
+        self.user_repo = UserRepo()
 
-    async def create_user(self, req_body: UserCreate):
+    async def create_credential(self, req_body: VerifierCreate):
         """
-        Wraps a `run_transaction` call that creates an user.
+        Wraps a `run_transaction` call that creates an credential.
 
         Arguments:
-            reqBody {UserCreate} -- The user's validated pydantic request model.
-            user_id {UUID} -- The user's unique ID.
+            reqBody {VerifierCreate} -- The credential's validated pydantic request model.
         """
+
         with self.sessionmaker() as session:
             return self._repo.create_obj(p_model=req_body, session=session)
 
-    async def get_users(self, skip, limit):
-        """
-        Wraps a `run_transaction` call that gets users in a particular city as a list of dictionaries.
-
-        Arguments:
-            city {String} -- The users' city.
-
-        Returns:
-            List -- A list of dictionaries containing user data.
-        """
-        return run_transaction(
-            self.sessionmaker,
-            lambda session: self._repo.get_objs(session, skip=skip, limit=limit),
-        )
-
-    async def get_user(
+    async def get_credential(
         self, phone_number: Optional[str] = None, user_id: Optional[UUID4] = None
     ):
         """
-        Wraps a `run_transaction` call that gets a User object. As a required function for LoginManager, the function must take the `user_id` argument, and return a User object.
+        Wraps a `run_transaction` call that gets a Verifier object. As a required function for LoginManager, the function must take the `credential_id` argument, and return a Verifier object.
 
         Keyword Arguments:
-            username {String} -- The user's username. (default: {None})
-            user_id {UUID} -- The user's unique ID. (default: {None})
+            phone_number {String} -- The user's phone number.
 
         Returns:
-            User -- A User object.
+            Verifier -- A Verifier object.
         """
         with self.sessionmaker() as session:
             if user_id is not None:
-                return self._repo.get_obj(session, user_id)
+                credential = self._repo.get_obj_by_filter(
+                    session, cols=["user_id"], col_vals=[user_id]
+                )
+                return credential[0]
             if phone_number is not None:
-                # check if user exists
-                user = self._repo.get_user_txn(session, phone_number)
-                return user
+                credential = self._repo.get_obj_by_phone_number(
+                    session=session, phone_number=phone_number
+                )
+                return credential
             raise ValueError(
-                {"key": "user_id, phone_number", "message": "value not provided"}
+                "atleast one of the arguments phone_number, user_id is required"
             )
 
 
-# if user is None:
-#     # create user
-#     user = self._repo.create_obj(
-#         session=session, p_model=UserCreate(phone_number=phone_number)
+# if credential is None:
+#     # create credential
+#     credential = self._repo.create_obj(
+#         session=session, p_model=VerifierCreate(phone_number=phone_number)
 #     )
 # def start_ride(self, city, rider_id, vehicle_id):
 #     """
@@ -97,7 +88,7 @@ class UserService:
 
 #     Arguments:
 #         city {String} -- The ride's city.
-#         rider_id {UUID} -- The user's unique ID.
+#         rider_id {UUID} -- The credential's unique ID.
 #         vehicle_id {UUID} -- The vehicle's unique ID.
 #     """
 
@@ -113,34 +104,34 @@ class UserService:
 #         self.sessionmaker, lambda session: end_ride_txn(session, ride_id, location)
 #     )
 
-# def add_user(self, city, first_name, last_name, email, username, password):
+# def add_credential(self, city, first_name, last_name, email, credentialname, password):
 #     """
-#     Wraps a `run_transaction` call that adds a user.
+#     Wraps a `run_transaction` call that adds a credential.
 
 #     Arguments:
-#         city {String} -- The user's city.
-#         first_name {String} -- The user's first name.
-#         last_name {String} -- The user's last name.
-#         email {String} -- The user's email.
-#         username {String} -- The user's username.
-#         password {String} -- The user's unhashed password.
+#         city {String} -- The credential's city.
+#         first_name {String} -- The credential's first name.
+#         last_name {String} -- The credential's last name.
+#         email {String} -- The credential's email.
+#         credentialname {String} -- The credential's credentialname.
+#         password {String} -- The credential's unhashed password.
 #     """
 #     return run_transaction(
 #         self.sessionmaker,
-#         lambda session: add_user_txn(
-#             session, city, first_name, last_name, email, username, password
+#         lambda session: add_credential_txn(
+#             session, city, first_name, last_name, email, credentialname, password
 #         ),
 #     )
 
-# def remove_user(self, user_id):
+# def remove_credential(self, credential_id):
 #     """
-#     Wraps a `run_transaction` call that "removes" a user. No rows are deleted by this function.
+#     Wraps a `run_transaction` call that "removes" a credential. No rows are deleted by this function.
 
 #     Arguments:
-#         id {UUID} -- The user's unique ID.
+#         id {UUID} -- The credential's unique ID.
 #     """
 #     return run_transaction(
-#         self.sessionmaker, lambda session: remove_user_txn(session, user_id)
+#         self.sessionmaker, lambda session: remove_credential_txn(session, credential_id)
 #     )
 
 # def remove_vehicle(self, vehicle_id):
@@ -170,7 +161,7 @@ class UserService:
 #         status {String} -- The vehicle's availability.
 
 #     Keyword Arguments:
-#         is_owner {bool} -- The owner status of the user, before the vehicle is added. (default: {False})
+#         is_owner {bool} -- The owner status of the credential, before the vehicle is added. (default: {False})
 #     """
 #     return run_transaction(
 #         self.sessionmaker,
@@ -187,18 +178,18 @@ class UserService:
 #         ),
 #     )
 
-# def get_users(self, city):
+# def get_credentials(self, city):
 #     """
-#     Wraps a `run_transaction` call that gets users in a particular city as a list of dictionaries.
+#     Wraps a `run_transaction` call that gets credentials in a particular city as a list of dictionaries.
 
 #     Arguments:
-#         city {String} -- The users' city.
+#         city {String} -- The credentials' city.
 
 #     Returns:
-#         List -- A list of dictionaries containing user data.
+#         List -- A list of dictionaries containing credential data.
 #     """
 #     return run_transaction(
-#         self.sessionmaker, lambda session: get_users_txn(session, city)
+#         self.sessionmaker, lambda session: get_credentials_txn(session, city)
 #     )
 
 # def get_vehicles(self, city):
@@ -217,10 +208,10 @@ class UserService:
 
 # def get_rides(self, rider_id):
 #     """
-#     Wraps a `run_transaction` call that gets rides for a particular user as a list of dictionaries.
+#     Wraps a `run_transaction` call that gets rides for a particular credential as a list of dictionaries.
 
 #     Arguments:
-#         rider_id {UUID} -- The user's unique ID.
+#         rider_id {UUID} -- The credential's unique ID.
 
 #     Returns:
 #         List -- A list of dictionaries containing ride data.
