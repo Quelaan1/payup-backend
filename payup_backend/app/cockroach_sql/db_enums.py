@@ -12,6 +12,11 @@ class VerifierType(enum.Enum):
     TWILIO = 2
 
 
+class UserType(enum.Enum):
+    USER = 1
+    ADMIN = 2
+
+
 def get_kyc_type_name(kyc_type_value: int):
     """Converts a KYC type integer value to its human-readable form."""
     try:

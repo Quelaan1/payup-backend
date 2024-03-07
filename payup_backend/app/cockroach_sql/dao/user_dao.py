@@ -1,11 +1,13 @@
+"""user crud to database"""
+
 import logging
 from uuid import UUID
 from typing import Any
 from sqlalchemy.orm import Session
-from sqlalchemy import select, insert, delete, update, Connection, Column
+from sqlalchemy import select, delete, update, Column
 
 from ...modules.user.model import UserCreate, UserUpdate, User as UserModel
-from ..schemas import pwd_context, User as UserSchema, Verifier as VerifierSchema
+from ..schemas import User as UserSchema, Verifier as VerifierSchema
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class UserRepo:
+    """crud on users model"""
 
     def __init__(self):
         self._schema = UserSchema
@@ -22,74 +25,56 @@ class UserRepo:
     def get_objs(
         self, session: Session, skip: int = 0, limit: int = 100
     ) -> list[UserModel]:
+        """get users list, paginated"""
         stmt = select(self._schema).offset(skip).limit(limit)
         db_models = session.execute(stmt).scalars().all()
         return [UserModel.model_validate(db_model) for db_model in db_models]
 
     def get_obj(self, session: Session, obj_id: UUID):
+        """get user by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
         db_model = session.execute(stmt).scalars().first()
         return UserModel.model_validate(db_model)
 
     def create_obj(self, session: Session, p_model: UserCreate) -> UserModel:
-        # stmt = insert(UserSchema).values(**p_model.model_dump(), owner_id=user_id)
-        db_model = self._schema(**p_model.model_dump(exclude=[""]))
-        db_model.is_active = True
-
+        """create user entity in db"""
+        db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
         session.commit()
         session.refresh(db_model)
-
         p_resp = UserModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
-
         return p_resp
 
-    def create_user_item_2(self, conn: Connection, p_model: UserCreate) -> UserModel:
-        db_model = self._schema(**p_model.model_dump())
-        db_model.is_active = True
-
-        model_data = {
-            c.name: getattr(db_model, c.name)
-            for c in self._schema.__table__.columns
-            if c.name != "id"
-        }
-        logger.info("[model data]-[%s]", model_data)
-
-        stmt = insert(self._schema).values(**model_data)
-        res = conn.execute(stmt)
-
-        # Convert the result to a Pydantic model
-        logger.info("[res]-[]")
-        user_data = None
-        while res:
-            user_data = dict(res)
-            logger.info("[res]-[%s]", user_data)
-        if user_data:
-            return UserModel(**user_data)
-
-        raise ValueError("Failed to create user")
-
     def update_obj(self, session: Session, obj_id: UUID, p_model: UserUpdate) -> None:
+        """update user gives its primary key and update model"""
         stmt = (
             update(self._schema)
             .where(self._schema.id == obj_id)
             .values(**p_model.model_dump(exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
-        session.execute(stmt)
+        result = session.execute(stmt)
+        session.commit()
+
+        logger.info("Rows updated: %s", result.rowcount)
+        result.close()
 
     def delete_obj(self, session: Session, obj_id: UUID) -> None:
+        """deletes user entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
-        session.execute(stmt)
+        result = session.execute(stmt)
+        session.commit()
+        logger.info("Rows updated: %s", result.rowcount)
 
     def get_obj_by_filter(
-        self, session: Session, cols: list[Column], col_vals: list[Any]
+        self, session: Session, col_filters: list[tuple[Column, Any]]
     ):
+        """filter user table for list"""
         stmt = select(self._schema)
-        for i, col in enumerate(cols):
-            stmt = stmt.filter(col == col_vals[i])
+        for col, val in col_filters:
+            stmt = stmt.where(col == val)
         db_models = session.execute(stmt).scalars().all()
         return [UserModel.model_validate(db_model) for db_model in db_models]
 

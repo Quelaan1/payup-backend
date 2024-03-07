@@ -1,10 +1,46 @@
-from typing import Optional
-from pydantic import BaseModel
+"""application auth validation models"""
 
+from typing import Optional, Annotated
+from pydantic import BaseModel, StringConstraints, Field
+from datetime import datetime
 from ..user.model import User as UserModel
 from ...models.py_models import BaseResponse
 from typing import Optional
 from pydantic import BaseModel, UUID4, ConfigDict, SecretStr
+
+from typing import Optional
+from pydantic import BaseModel, UUID4, ConfigDict, SecretStr
+
+
+class OTPBase(BaseModel):
+    """minimum otp information"""
+
+    model_config = ConfigDict(
+        from_attributes=True, revalidate_instances="always", validate_assignment=True
+    )
+
+
+class OTPUpdate(OTPBase):
+    """otp update model to pass to dao"""
+
+    otp: int
+    expires_at: datetime = datetime.now()
+
+
+class OTPCreate(OTPUpdate):
+    """otp create model to be passed to otp_dao"""
+
+    id: UUID4
+    phone_number: int
+
+
+class OTP(OTPBase):
+    """otp model returned from otp_dao"""
+
+    id: UUID4
+    phone_number: int
+    otp: int
+    expires_at: datetime
 
 
 class VerifierBase(BaseModel):
@@ -53,11 +89,18 @@ class RegisterNumberRequestBase(BaseModel):
 
 
 class OTPRequestBase(BaseModel):
-    phone_number: str
+    phone_number: Annotated[
+        str,
+        Field(..., regex=r"^\d{10}$"),
+    ]
 
 
 class OTPVerifyRequest(OTPRequestBase):
-    otp: int
+    phone_number: Annotated[
+        str,
+        Field(..., regex=r"^\d{10}$"),
+    ]
+    otp: Annotated[int, Field(..., ge=100000, lt=1000000)]
 
 
 class AuthResponse(BaseResponse):

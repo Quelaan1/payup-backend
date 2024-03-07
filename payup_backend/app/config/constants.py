@@ -45,6 +45,7 @@ class TwilioSettings(BaseSettings):
     ACCOUNT_SID: str
     AUTH_TOKEN: str
     SMS_SERVICE_SID: str
+    PHONE_NUMBER: str
 
     def __str__(self):
         return settings_as_string(self.model_dump(), "TWILIO")

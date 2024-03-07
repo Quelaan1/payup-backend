@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 
-from ....modules.auth.model import OTPResponse, OTPVerifyResponse
+from ....modules.auth.model import BaseResponse
 from ....config.constants import get_settings
 
 
@@ -31,7 +31,7 @@ class TwilioService:
         self.client = Client(constants.TWILIO.ACCOUNT_SID, constants.TWILIO.AUTH_TOKEN)
         # self.service_id
 
-    async def send_otp_sms(self, phone_number: str):
+    async def send_otp_sms_verification_type(self, phone_number: str):
         """send otp via sms"""
         try:
             verification = self.client.verify.v2.services(
@@ -42,7 +42,25 @@ class TwilioService:
             raise twilio_error
 
         if verification.status == "pending":
-            return OTPResponse(message="OTP sent successfully")
+            return BaseResponse(message="OTP sent successfully")
+
+    async def send_otp_sms(self, phone_number: str, otp: str):
+        """send otp via sms"""
+        try:
+            verification = self.client.messages.create(
+                to="+91" + phone_number,
+                from_=constants.TWILIO.PHONE_NUMBER,
+                body=f"""
+                Dear customer, your PayUp verification code is {otp}. 
+                Message is valid for next 30 minutes. Single use only.""",
+                # constants.TWILIO.SMS_SERVICE_SID
+            )
+        except TwilioRestException as twilio_error:
+            logger.error(twilio_error.args)
+            raise twilio_error
+
+        if verification.status == "pending":
+            return BaseResponse(message="OTP sent successfully")
 
     async def verify_otp(self, phone_number: str, otp: str):
         """verify phone otp via sms"""
@@ -52,7 +70,7 @@ class TwilioService:
             ).verification_checks.create(to="+91" + phone_number, code=otp)
 
             if verification.status == "approved":
-                return OTPVerifyResponse(
+                return BaseResponse(
                     message="OTP verified successfully", is_successful=True
                 )
 
