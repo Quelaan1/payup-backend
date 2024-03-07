@@ -49,9 +49,9 @@ class AuthService:
         self.user_service = UserService()
 
         self.engine = database.engine
-        self.connect = PoolConnection()
+        # self.connect = PoolConnection()
 
-        self.sessionmaker = sessionmaker(bind=self.connect)
+        self.sessionmaker = sessionmaker(bind=self.engine)
         self.phone_repo = PhoneRepo()
         self.user_repo = UserRepo()
         self.profile_repo = ProfileRepo()
@@ -68,7 +68,7 @@ class AuthService:
             with self.sessionmaker() as session:
                 # query for phone number if already exist get if, else create phone entity in db
                 db_phone_models = self.phone_repo.get_obj_by_filter(
-                    session=session, col_filters=[(PhoneEntity.number, phone_number)]
+                    session=session, col_filters=[(PhoneEntity.m_number, phone_number)]
                 )
                 if len(db_phone_models) == 0:
                     db_phone = self.create_profile_txn(phone_number)
@@ -78,15 +78,17 @@ class AuthService:
                     session=session,
                     p_model=OTPCreate(
                         id=db_phone.id,
-                        phone_number=phone_number,
-                        otp=otp_new,
+                        m_otp=otp_new,
                         expires_at=future_time,
                     ),
                 )
                 logger.info(db_otp_model.model_dump())
 
             logger.info(db_otp_model.model_dump())
-            return await self.twilio_service.send_otp_sms(phone_number, str(otp_new))
+            response = await self.twilio_service.send_otp_sms(
+                phone_number, str(otp_new)
+            )
+            return response
         except TwilioRestException as twilio_error:
             logger.error(twilio_error.args)
             raise twilio_error

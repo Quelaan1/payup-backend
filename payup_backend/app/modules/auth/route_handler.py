@@ -1,5 +1,6 @@
 """class that encapsulated api router"""
 
+import logging
 from fastapi import APIRouter, HTTPException, status
 from twilio.base.exceptions import TwilioRestException
 
@@ -14,6 +15,11 @@ from .model import (
 from ..auth.service import AuthService
 from ...models.py_models import BaseResponse
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(lineno)d | %(filename)s : %(message)s",
+)
+logger = logging.getLogger(__name__)
 # class Foo:
 #     # Step 3: Add dependencies as class attributes
 #     x: int = Depends(get_x)
@@ -80,7 +86,9 @@ class Auth:
 
     async def send_otp_endpoint(self, otp_request: OTPRequestBase):
         try:
-            return await self.auth_service.send_otp_sms(otp_request.phone_number)
+            response = await self.auth_service.send_otp_sms(otp_request.phone_number)
+            logger.info(response)
+            return response
         except TwilioRestException as twilio_error:
             raise HTTPException(
                 status_code=twilio_error.status,

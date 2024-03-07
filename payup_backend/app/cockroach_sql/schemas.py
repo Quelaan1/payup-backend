@@ -37,7 +37,7 @@ class User(Base):
     __tablename__ = "users"
     __table_args__ = {"schema": schema}
 
-    id = Column(UUID, primary_key=True, default=uuid.uuid4())
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
     user_type = Column(SmallInteger)
     is_active = Column(Boolean, default=False)
     phone_lock = Column(Boolean, default=False)
@@ -60,7 +60,7 @@ class Profile(Base):
     __tablename__ = "profiles"
     __table_args__ = {"schema": schema}
 
-    id = Column(UUID, primary_key=True, default=uuid.uuid4())
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, index=True)
     first_name = Column(String)
     last_name = Column(String)
@@ -72,7 +72,7 @@ class Verifier(Base):
     __tablename__ = "verifiers"
     __table_args__ = {"schema": schema}
 
-    id = Column(UUID, primary_key=True, default=uuid.uuid4())
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID, ForeignKey(f"{schema}.users.id"))
     phone_verifier = Column(Integer)
     v_id = Column(String)  # verifier_id
@@ -100,8 +100,8 @@ class OtpEntity(Base):
     __tablename__ = "otps"
     __table_args__ = {"schema": schema}
 
-    id = Column(UUID, primary_key=True, default=uuid.uuid4())
-    otp = Column(Integer)
+    id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    m_otp = Column(Integer)
     expires_at = Column(DateTime)  # update on update
 
 

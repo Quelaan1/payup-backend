@@ -55,12 +55,13 @@ class TwilioService:
                 Message is valid for next 30 minutes. Single use only.""",
                 # constants.TWILIO.SMS_SERVICE_SID
             )
+            logger.info("[TWILIO RESPONSE : %s]", verification.status)
         except TwilioRestException as twilio_error:
             logger.error(twilio_error.args)
             raise twilio_error
 
-        if verification.status == "pending":
-            return BaseResponse(message="OTP sent successfully")
+        if verification.status in ["pending", "queued"]:
+            return BaseResponse(message="OTP sent successfully", is_successful=True)
 
     async def verify_otp(self, phone_number: str, otp: str):
         """verify phone otp via sms"""

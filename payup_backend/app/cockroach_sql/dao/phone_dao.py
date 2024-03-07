@@ -38,7 +38,7 @@ class PhoneRepo:
 
     def create_obj(self, session: Session, p_model: PhoneCreate) -> PhoneModel:
         """create phone entity in db"""
-        db_model = self._schema(**p_model.model_dump(exclude=["pin"], by_alias=True))
+        db_model = self._schema(**p_model.model_dump(exclude=["m_pin"], by_alias=True))
         if p_model.m_pin is not None:
             db_model.set_password(p_model.m_pin.get_secret_value())
         logger.info("db_model : %s", db_model)
@@ -54,7 +54,7 @@ class PhoneRepo:
         stmt = (
             update(self._schema)
             .where(self._schema.id == obj_id)
-            .values(**p_model.model_dump(exclude=["pin"], exclude_unset=True))
+            .values(**p_model.model_dump(exclude=["m_pin"], exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
         if p_model.m_pin is not None:

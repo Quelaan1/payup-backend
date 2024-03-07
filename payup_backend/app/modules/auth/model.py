@@ -23,7 +23,7 @@ class OTPBase(BaseModel):
 class OTPUpdate(OTPBase):
     """otp update model to pass to dao"""
 
-    otp: int
+    m_otp: int
     expires_at: datetime = datetime.now()
 
 
@@ -31,15 +31,13 @@ class OTPCreate(OTPUpdate):
     """otp create model to be passed to otp_dao"""
 
     id: UUID4
-    phone_number: int
 
 
 class OTP(OTPBase):
     """otp model returned from otp_dao"""
 
     id: UUID4
-    phone_number: int
-    otp: int
+    m_otp: int
     expires_at: datetime
 
 
@@ -91,14 +89,14 @@ class RegisterNumberRequestBase(BaseModel):
 class OTPRequestBase(BaseModel):
     phone_number: Annotated[
         str,
-        Field(..., regex=r"^\d{10}$"),
+        Field(..., pattern=r"^\d{10}$"),
     ]
 
 
 class OTPVerifyRequest(OTPRequestBase):
     phone_number: Annotated[
         str,
-        Field(..., regex=r"^\d{10}$"),
+        Field(..., pattern=r"^\d{10}$"),
     ]
     otp: Annotated[int, Field(..., ge=100000, lt=1000000)]
 

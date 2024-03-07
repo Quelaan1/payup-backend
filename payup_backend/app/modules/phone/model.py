@@ -15,7 +15,7 @@ class PhoneBase(BaseModel):
 class PhoneUpdate(PhoneBase):
     """phone update model to pass to dao"""
 
-    primary: Optional[bool] = None
+    is_primary: Optional[bool] = None
     verified: Optional[bool] = None
     m_pin: Optional[SecretStr] = None
 
@@ -31,8 +31,8 @@ class Phone(PhoneBase):
     """phone model returned from phone_dao"""
 
     id: UUID4
-    primary: bool
+    is_primary: bool
     verified: bool
     m_number: int
-    m_pin: str
-    profile_id: UUID4
+    m_pin: Optional[str]
+    user_id: UUID4
