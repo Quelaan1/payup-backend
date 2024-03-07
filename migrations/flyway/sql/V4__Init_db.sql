@@ -2,21 +2,11 @@
 CREATE SCHEMA IF NOT EXISTS dev_schema;
 
 -- drop old tables
-DROP TABLE IF EXISTS dev_schema.users;
 DROP TABLE IF EXISTS dev_schema.kyc_entities;
 DROP TABLE IF EXISTS dev_schema.users;
+-- DROP TABLE IF EXISTS dev_schema.users;
 
 -- Create the 'users' table if it doesn't exist
-CREATE TABLE IF NOT EXISTS dev_schema.users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_type SMALLINT,
-    is_active BOOLEAN DEFAULT FALSE,
-    phone_lock BOOLEAN DEFAULT FALSE,
-    profile_id UUID REFERENCES dev_schema.profiles(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-
 CREATE TABLE IF NOT EXISTS dev_schema.profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email STRING UNIQUE,
@@ -27,6 +17,18 @@ CREATE TABLE IF NOT EXISTS dev_schema.profiles (
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS dev_schema.users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_type SMALLINT,
+    is_active BOOLEAN DEFAULT FALSE,
+    phone_lock BOOLEAN DEFAULT FALSE,
+    profile_id UUID REFERENCES dev_schema.profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+
 
 CREATE TABLE IF NOT EXISTS dev_schema.kyc_entities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
