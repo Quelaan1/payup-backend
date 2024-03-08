@@ -5,6 +5,7 @@ from uuid import UUID
 from typing import Any
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete, update, Column
+from sqlalchemy.dialects import postgresql
 
 from ...modules.phone.model import PhoneCreate, PhoneUpdate, Phone as PhoneModel
 from ..schemas import PhoneEntity as PhoneSchema
@@ -85,5 +86,12 @@ class PhoneRepo:
         stmt = select(self._schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
+        # Compile the statement to a string of raw SQL
+        compiled_stmt = stmt.compile(
+            dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+        )
+
+        # Log the raw SQL statement
+        logger.info(compiled_stmt)
         db_models = session.execute(stmt).scalars().all()
         return [PhoneModel.model_validate(db_model) for db_model in db_models]

@@ -45,17 +45,17 @@ class AuthService:
         Arguments:
             conn_string {String} -- CockroachDB connection string.
         """
-        self.twilio_service = TwilioService()
-        self.user_service = UserService()
-
         self.engine = database.engine
-        # self.connect = PoolConnection()
-
         self.sessionmaker = sessionmaker(bind=self.engine)
+
         self.phone_repo = PhoneRepo()
         self.user_repo = UserRepo()
         self.profile_repo = ProfileRepo()
         self.otp_repo = OTPRepo()
+        # self.connect = PoolConnection()
+
+        self.twilio_service = TwilioService()
+        self.user_service = UserService()
 
     async def send_otp_sms(self, phone_number: str):
         """send otp via sms"""
@@ -70,6 +70,7 @@ class AuthService:
                 db_phone_models = self.phone_repo.get_obj_by_filter(
                     session=session, col_filters=[(PhoneEntity.m_number, phone_number)]
                 )
+                logger.info(db_phone_models)
                 if len(db_phone_models) == 0:
                     db_phone = self.create_profile_txn(phone_number)
                 else:
