@@ -82,16 +82,17 @@ class AuthService:
                         expires_at=future_time,
                     ),
                 )
-                logger.info(db_otp_model.model_dump())
 
             logger.info(db_otp_model.model_dump())
             response = await self.twilio_service.send_otp_sms(
                 phone_number, str(otp_new)
             )
             return response
-        except TwilioRestException as twilio_error:
-            logger.error(twilio_error.args)
-            raise twilio_error
+        except Exception as err:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=err.args,
+            ) from err
 
     async def verify_otp(self, phone_number: str, otp: str):
         """verify phone otp via sms"""
