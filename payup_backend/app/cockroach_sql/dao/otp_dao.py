@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, delete, update, Column
 
 from ...modules.auth.model import OTPCreate, OTPUpdate, OTP as OTPModel
-from ..schemas import OtpEntity as OTPSchema
+from ..schemas import OtpEntity as OTPSchema, PhoneEntity as PhoneSchema
+from ...config.errors import NotFoundError
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,7 +23,7 @@ class OTPRepo:
     def __init__(self):
         self._schema = OTPSchema
 
-    def get_objs(
+    async def get_objs(
         self, session: Session, skip: int = 0, limit: int = 100
     ) -> list[OTPModel]:
         """get otps list, paginated"""
@@ -30,13 +31,13 @@ class OTPRepo:
         db_models = session.execute(stmt).scalars().all()
         return [OTPModel.model_validate(db_model) for db_model in db_models]
 
-    def get_obj(self, session: Session, obj_id: UUID):
+    async def get_obj(self, session: Session, obj_id: UUID):
         """get otp by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
         db_model = session.execute(stmt).scalars().first()
         return OTPModel.model_validate(db_model)
 
-    def create_obj(self, session: Session, p_model: OTPCreate) -> OTPModel:
+    async def create_obj(self, session: Session, p_model: OTPCreate) -> OTPModel:
         """create otp entity in db"""
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
@@ -47,7 +48,9 @@ class OTPRepo:
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
-    def update_obj(self, session: Session, obj_id: UUID, p_model: OTPUpdate) -> None:
+    async def update_obj(
+        self, session: Session, obj_id: UUID, p_model: OTPUpdate
+    ) -> None:
         """update otp gives its primary key and update model"""
         stmt = (
             update(self._schema)
@@ -61,7 +64,9 @@ class OTPRepo:
         logger.info("Rows updated: %s", result.rowcount)
         result.close()
 
-    def update_or_create_obj(self, session: Session, p_model: OTPCreate) -> OTPModel:
+    async def update_or_create_obj(
+        self, session: Session, p_model: OTPCreate
+    ) -> OTPModel:
         """Create or update otp entity in db."""
         unique_identifier = (
             p_model.id
@@ -85,14 +90,14 @@ class OTPRepo:
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
-    def delete_obj(self, session: Session, obj_id: UUID) -> None:
+    async def delete_obj(self, session: Session, obj_id: UUID) -> None:
         """deletes otp entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
         result = session.execute(stmt)
         session.commit()
         logger.info("Rows updated: %s", result.rowcount)
 
-    def get_obj_by_filter(
+    async def get_obj_by_filter(
         self, session: Session, col_filters: list[tuple[Column, Any]]
     ):
         """filter otp table for list"""
@@ -101,3 +106,16 @@ class OTPRepo:
             stmt = stmt.where(col == val)
         db_models = session.execute(stmt).scalars().all()
         return [OTPModel.model_validate(db_model) for db_model in db_models]
+
+    async def get_otp_by_phone(self, session: Session, phone_number: str):
+        """filter otp table for list"""
+        stmt = select(self._schema)
+        stmt = stmt.join_from(
+            PhoneSchema,
+            self._schema,
+            PhoneSchema.id == self._schema.id,
+        ).where(PhoneSchema.m_number == phone_number)
+        db_model = session.execute(stmt).scalars().first()
+        if db_model:
+            return OTPModel.model_validate(db_model)
+        raise NotFoundError(name=__name__, detail="otp not found for this number")

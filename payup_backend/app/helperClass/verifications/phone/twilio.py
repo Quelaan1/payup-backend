@@ -40,7 +40,9 @@ class TwilioService:
             ).verifications.create(to="+91" + phone_number, channel="sms")
         except TwilioRestException as twilio_error:
             logger.error(twilio_error.args)
-            raise ExternalServiceError(name=__name__) from twilio_error
+            raise ExternalServiceError(
+                name=__name__, detail=BaseResponse(message=twilio_error.args)
+            ) from twilio_error
 
         if verification.status == "pending":
             return BaseResponse(message="OTP sent successfully")
@@ -51,19 +53,23 @@ class TwilioService:
             verification = self.client.messages.create(
                 to="+91" + phone_number,
                 from_=constants.TWILIO.PHONE_NUMBER,
-                body=f"""
-                Dear customer, your PayUp verification code is {otp}. 
-                Message is valid for next 30 minutes. Single use only.""",
-                # constants.TWILIO.SMS_SERVICE_SID
+                body=f"Dear customer, your PayUp verification code is {otp}. Valid for 30 minutes.",
             )
             logger.info("[TWILIO RESPONSE : %s]", verification.status)
             if verification.status in ["pending", "queued"]:
-                return BaseResponse(message="OTP sent successfully", is_successful=True)
+                return BaseResponse(message="OTP sent successfully")
             else:
-                raise ExternalServiceError(name=__name__)
+                raise ExternalServiceError(
+                    name=__name__,
+                    detail=BaseResponse(
+                        detail=f"[TWILIO RESPONSE : {verification.status}]"
+                    ),
+                )
         except TwilioRestException as twilio_error:
             logger.error(twilio_error.args)
-            raise ExternalServiceError(name=__name__) from twilio_error
+            raise ExternalServiceError(
+                name=__name__, detail=BaseResponse(message=twilio_error.args)
+            ) from twilio_error
 
     async def verify_otp(self, phone_number: str, otp: str):
         """verify phone otp via sms"""
@@ -84,7 +90,9 @@ class TwilioService:
             )
         except TwilioRestException as twilio_error:
             logger.error(twilio_error.args)
-            raise ExternalServiceError(name=__name__) from twilio_error
+            raise ExternalServiceError(
+                name=__name__, detail=BaseResponse(message=twilio_error.args)
+            ) from twilio_error
 
 
 # from twilio.rest import Client

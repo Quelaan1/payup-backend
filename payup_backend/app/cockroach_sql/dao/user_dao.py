@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, delete, update, Column
 
 from ...modules.user.model import UserCreate, UserUpdate, User as UserModel
-from ..schemas import User as UserSchema, Verifier as VerifierSchema
+from ..schemas import User as UserSchema
 
 logging.basicConfig(
     level=logging.INFO,
@@ -78,28 +78,28 @@ class UserRepo:
         db_models = session.execute(stmt).scalars().all()
         return [UserModel.model_validate(db_model) for db_model in db_models]
 
-    def get_user_txn(self, session: Session, phone_number: str):
-        """
-        Select a row of the users table, and return the row as a User object.
+    # def get_user_txn(self, session: Session, phone_number: str):
+    #     """
+    #     Select a row of the users table, and return the row as a User object.
 
-        Arguments:
-            session {.Session} -- The active session for the database connection.
+    #     Arguments:
+    #         session {.Session} -- The active session for the database connection.
 
-        Keyword Arguments:
-            phone_number {String} -- The user's phone_number. (default: {None})
-            user_id {UUID} -- The user's unique ID. (default: {None})
+    #     Keyword Arguments:
+    #         phone_number {String} -- The user's phone_number. (default: {None})
+    #         user_id {UUID} -- The user's unique ID. (default: {None})
 
-        Returns:
-            User -- A User object.
-        """
-        stmt = (
-            select(self._schema)
-            .join_from(
-                self._schema,
-                VerifierSchema,
-                VerifierSchema.user_id == self._schema.id,
-            )
-            .where(VerifierSchema.phone_number == phone_number)
-        )
-        db_model = session.execute(stmt).scalars().first()
-        return UserModel.model_validate(db_model) if db_model else None
+    #     Returns:
+    #         User -- A User object.
+    #     """
+    #     stmt = (
+    #         select(self._schema)
+    #         .join_from(
+    #             self._schema,
+    #             VerifierSchema,
+    #             VerifierSchema.user_id == self._schema.id,
+    #         )
+    #         .where(VerifierSchema.phone_number == phone_number)
+    #     )
+    #     db_model = session.execute(stmt).scalars().first()
+    #     return UserModel.model_validate(db_model) if db_model else None

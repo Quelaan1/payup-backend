@@ -68,18 +68,6 @@ class Profile(Base):
     onboarded = Column(Boolean, default=False)
 
 
-class Verifier(Base):
-    __tablename__ = "verifiers"
-    __table_args__ = {"schema": schema}
-
-    id = Column(UUID, primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID, ForeignKey(f"{schema}.users.id"))
-    phone_verifier = Column(Integer)
-    v_id = Column(String)  # verifier_id
-    phone_number = Column(String, unique=True, index=True)
-    phone_lock = Column(Boolean, default=False)
-
-
 class KycEntity(Base):
     __tablename__ = "kyc_entities"
     __table_args__ = {"schema": schema}

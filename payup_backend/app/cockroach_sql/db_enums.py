@@ -7,11 +7,6 @@ class KycType(enum.Enum):
     GSTN = 3
 
 
-class VerifierType(enum.Enum):
-    FIREBASE = 1
-    TWILIO = 2
-
-
 class UserType(enum.Enum):
     USER = 1
     ADMIN = 2

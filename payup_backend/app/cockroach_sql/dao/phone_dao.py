@@ -9,6 +9,8 @@ from sqlalchemy.dialects import postgresql
 
 from ...modules.phone.model import PhoneCreate, PhoneUpdate, Phone as PhoneModel
 from ..schemas import PhoneEntity as PhoneSchema
+from ...config.errors import NotFoundError
+from ...models.py_models import BaseResponse
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,27 +52,29 @@ class PhoneRepo:
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
-    def update_obj(self, session: Session, obj_id: UUID, p_model: PhoneUpdate) -> None:
-        """update phone gives its primary key and update model"""
-        stmt = (
-            update(self._schema)
-            .where(self._schema.id == obj_id)
-            .values(**p_model.model_dump(exclude=["m_pin"], exclude_unset=True))
-            .execution_options(synchronize_session="fetch")
-        )
-        if p_model.m_pin is not None:
-            stmt = stmt.values(
-                {
-                    "pin": self._schema.get_hash_password(
-                        p_model.m_pin.get_secret_value()
-                    )
-                }
+    async def update_obj(self, session: Session, obj_id: UUID, p_model: PhoneUpdate):
+        """update phone given its primary key and update model"""
+        db_model = session.get(self._schema, obj_id)
+        if db_model is None:
+            raise NotFoundError(
+                name=__name__, detail=BaseResponse(detail="Phone not found")
             )
-        result = session.execute(stmt)
-        session.commit()
 
-        logger.info("Rows updated: %s", result.rowcount)
-        result.close()
+        update_data = p_model.model_dump(exclude=["m_pin"], exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_model, key, value)
+
+        if p_model.m_pin is not None:
+            db_model.pin = self._schema.get_hash_password(
+                p_model.m_pin.get_secret_value()
+            )
+
+        session.add(db_model)
+        session.commit()
+        session.refresh(db_model)
+
+        logger.info("Phone updated: %s", db_model.id)
+        return db_model
 
     def delete_obj(self, session: Session, obj_id: UUID) -> None:
         """deletes phone entity from db"""

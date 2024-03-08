@@ -10,6 +10,7 @@ from pydantic import BaseModel, UUID4, ConfigDict, SecretStr
 
 from typing import Optional
 from pydantic import BaseModel, UUID4, ConfigDict, SecretStr
+from ..profile.model import Profile
 
 
 class OTPBase(BaseModel):
@@ -41,43 +42,10 @@ class OTP(OTPBase):
     expires_at: datetime
 
 
-class VerifierBase(BaseModel):
-    """minimum credential information"""
-
-    model_config = ConfigDict(
-        from_attributes=True, revalidate_instances="always", validate_assignment=True
-    )
-    user_id: UUID4
-
-
-class VerifierUpdate(VerifierBase):
-    phone_verifier: Optional[int] = None
-    v_id: Optional[str] = None
-    m_pin: Optional[str] = None
-    phone_lock: Optional[bool] = None
-    phone_number: Optional[str] = None
-    user_id: Optional[UUID4] = None
-
-
-class CredentialUpdate(VerifierBase):
+class CredentialUpdate(BaseModel):
     m_pin: Optional[str] = None
     phone_lock: Optional[bool] = None
     phone_number: str
-
-
-class VerifierRegister(VerifierBase):
-    phone_verifier: int
-    v_id: str
-
-
-class VerifierCreate(VerifierRegister):
-    phone_number: str
-    phone_verifier: int
-    v_id: str
-
-
-class Verifier(VerifierCreate):
-    id: UUID4
 
 
 class RegisterNumberRequestBase(BaseModel):
@@ -91,6 +59,14 @@ class OTPRequestBase(BaseModel):
         str,
         Field(..., pattern=r"^\d{10}$"),
     ]
+
+
+class OTPResponse(BaseResponse):
+    """response on successful otp sent"""
+
+
+class OTPVerifyResponse(BaseResponse, Profile):
+    """response on successful otp sent"""
 
 
 class OTPVerifyRequest(OTPRequestBase):

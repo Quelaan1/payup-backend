@@ -3,26 +3,24 @@
 import logging
 import random
 from datetime import datetime, timedelta
-from uuid import uuid4
 from sqlalchemy.orm import sessionmaker
-from twilio.base.exceptions import TwilioRestException
 from fastapi import HTTPException, status
-from ...cockroach_sql.database import database, PoolConnection
+from fastapi.responses import JSONResponse
+from ...cockroach_sql.database import database
 from ...config.constants import get_settings
 from ...helperClass.verifications.phone.twilio import TwilioService
 from ...cockroach_sql.schemas import PhoneEntity
 from ...cockroach_sql.db_enums import UserType
 from ..user.service import UserService
-from .model import AuthResponse, OTPCreate
+from .model import OTPCreate, OTPResponse
 from ..user.model import UserCreate
-from ..auth.model import VerifierCreate, VerifierUpdate
-from ...cockroach_sql.db_enums import VerifierType
+from ..auth.model import OTPVerifyResponse
 from ...cockroach_sql.dao.phone_dao import PhoneRepo
 from ...cockroach_sql.dao.otp_dao import OTPRepo
 from ...cockroach_sql.dao.profile_dao import ProfileRepo
 from ...cockroach_sql.dao.user_dao import UserRepo
 from ..profile.model import ProfileCreate
-from ..phone.model import PhoneCreate, Phone as PhoneModel
+from ..phone.model import PhoneCreate, Phone as PhoneModel, PhoneUpdate
 
 logging.basicConfig(
     level=logging.INFO,
@@ -57,7 +55,7 @@ class AuthService:
         self.twilio_service = TwilioService()
         self.user_service = UserService()
 
-    async def send_otp_sms(self, phone_number: str):
+    async def send_otp_sms(self, phone_number: str) -> OTPResponse:
         """send otp via sms"""
         try:
             # create random otp and store in db with expiry time
@@ -75,7 +73,7 @@ class AuthService:
                     db_phone = self.create_profile_txn(phone_number)
                 else:
                     db_phone = db_phone_models[0]
-                db_otp_model = self.otp_repo.update_or_create_obj(
+                db_otp_model = await self.otp_repo.update_or_create_obj(
                     session=session,
                     p_model=OTPCreate(
                         id=db_phone.id,
@@ -90,33 +88,47 @@ class AuthService:
             )
             return response
         except Exception as err:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=err.args,
-            ) from err
+            logger.error("error : %s", err)
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"message": str(err.args[0])},
+            )
 
-    async def verify_otp(self, phone_number: str, otp: str):
+    async def verify_otp(self, phone_number: str, otp: int) -> OTPVerifyResponse:
         """verify phone otp via sms"""
         try:
-            res = AuthResponse(is_successful=False)
-            otp_res = await self.twilio_service.verify_otp(phone_number, otp)
-            logger.info("otp res : %s", otp_res)
-
-            if not otp_res.is_successful:
-                res.message = otp_res.message
-                return res
-            user = await self.user_service.get_user(phone_number=phone_number)
-            if user is None:
-                user = await self.user_service.create_user(
-                    UserCreate(phone_number=phone_number)
+            # get phone otp data from db
+            with self.sessionmaker() as session:
+                otp_model = await self.otp_repo.get_otp_by_phone(
+                    session=session, phone_number=phone_number
                 )
-            res.user_data = user
-            res.is_successful = True
-            logger.info("res : %s", res)
-            return res
-        except TwilioRestException as twilio_error:
-            logger.error(twilio_error.args)
-            raise twilio_error
+
+                if otp_model.m_otp != otp:
+                    logger.info("otp didn't matched")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="otp match failed",
+                    )
+                logger.info("otp matched successfully")
+                # change database states.
+                phone_model = await self.phone_repo.update_obj(
+                    session=session,
+                    obj_id=otp_model.id,
+                    p_model=PhoneUpdate(is_primary=True, verified=True),
+                )
+
+                data = self.profile_repo.get_profile_by_user(
+                    session=session, user_id=phone_model.user_id
+                )
+
+            return OTPVerifyResponse.model_validate(data)
+
+        except Exception as err:
+            logger.error("error : %s", err)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=err.args[0],
+            ) from err
 
     # async def create_user_txn(
     #     self, user_body: UserCreate, verifier_body: VerifierCreate

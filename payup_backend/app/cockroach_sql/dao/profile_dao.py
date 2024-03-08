@@ -11,7 +11,8 @@ from ...modules.profile.model import (
     ProfileUpdate,
     Profile as ProfileModel,
 )
-from ..schemas import Profile as ProfileSchema
+from ..schemas import Profile as ProfileSchema, User as UserSchema
+from ...config.errors import DatabaseError
 
 logging.basicConfig(
     level=logging.INFO,
@@ -84,28 +85,32 @@ class ProfileRepo:
         db_models = session.execute(stmt).scalars().all()
         return [ProfileModel.model_validate(db_model) for db_model in db_models]
 
-    # def get_profile_txn(self, session: Session, phone_number: str):
-    #     """
-    #     Select a row of the profiles table, and return the row as a Profile object.
+    def get_profile_by_user(self, session: Session, user_id: UUID):
+        """
+        Select a row of the profiles table, and return the row as a Profile object.
 
-    #     Arguments:
-    #         session {.Session} -- The active session for the database connection.
+        Arguments:
+            session {.Session} -- The active session for the database connection.
 
-    #     Keyword Arguments:
-    #         phone_number {String} -- The profile's phone_number. (default: {None})
-    #         profile_id {UUID} -- The profile's unique ID. (default: {None})
+        Keyword Arguments:
+            phone_number {String} -- The profile's phone_number. (default: {None})
+            profile_id {UUID} -- The profile's unique ID. (default: {None})
 
-    #     Returns:
-    #         Profile -- A Profile object.
-    #     """
-    #     stmt = (
-    #         select(self._schema)
-    #         .join_from(
-    #             self._schema,
-    #             VerifierSchema,
-    #             VerifierSchema.profile_id == self._schema.id,
-    #         )
-    #         .where(VerifierSchema.phone_number == phone_number)
-    #     )
-    #     db_model = session.execute(stmt).scalars().first()
-    #     return ProfileModel.model_validate(db_model) if db_model else None
+        Returns:
+            Profile -- A Profile object.
+        """
+        stmt = (
+            select(self._schema)
+            .join_from(
+                self._schema,
+                UserSchema,
+                UserSchema.profile_id == self._schema.id,
+            )
+            .where(UserSchema.id == user_id)
+        )
+        db_model = session.execute(stmt).scalars().first()
+        if db_model:
+            return ProfileModel.model_validate(db_model)
+        raise DatabaseError(
+            {"message": f"database inconsistence. no profile for user_id {user_id}"}
+        )

@@ -63,7 +63,6 @@ class Database(object):
             self._db = config.COCKROACH.DB
             conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
 
-            logger.info("database uri : %s", conn_str)
             self._engine = create_engine(
                 conn_str,
                 pool_pre_ping=True,
@@ -72,14 +71,6 @@ class Database(object):
                 pool_use_lifo=True,
                 pool_size=5,
             )
-            # self._engine = create_engine(
-            #     "postgresql://{}".format(self._db),
-            #     echo=False,
-            #     poolclass=QueuePool,
-            #     pool_size=2048,
-            #     max_overflow=1024,
-            #     client_encoding="utf8",
-            # )
         return self._engine
 
     @property
