@@ -30,22 +30,6 @@ logger = logging.getLogger(__name__)
 #         return self.x
 
 
-# class Hello:
-
-#     def __init__(self, name: str):
-#         self.name = name
-#         self.router = APIRouter()
-#         self.router.add_api_route("/hello", self.hello, methods=["GET"])
-
-#     def hello(self):
-#         return {"Hello": self.name}
-
-
-# app = FastAPI()
-# hello = Hello("World")
-# app.include_router(hello.router)
-
-
 class Auth:
     def __init__(self, name: str):
         self.name = name
@@ -85,15 +69,9 @@ class Auth:
         return {"Hello": self.name}
 
     async def send_otp_endpoint(self, otp_request: OTPRequestBase):
-        try:
-            response = await self.auth_service.send_otp_sms(otp_request.phone_number)
-            logger.info(response)
-            return response
-        except TwilioRestException as twilio_error:
-            raise HTTPException(
-                status_code=twilio_error.status,
-                detail=twilio_error.msg,
-            ) from twilio_error
+        response = await self.auth_service.send_otp_sms(otp_request.phone_number)
+        logger.info(response)
+        return response
 
     async def verify_otp_endpoint(self, otp_verify: OTPVerifyRequest):
         try:

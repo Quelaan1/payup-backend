@@ -2,8 +2,8 @@
 CREATE SCHEMA IF NOT EXISTS dev_schema;
 
 -- drop old tables
-DROP TABLE IF EXISTS dev_schema.kyc_entities;
-DROP TABLE IF EXISTS dev_schema.users;
+-- DROP TABLE IF EXISTS dev_schema.kyc_entities;
+-- DROP TABLE IF EXISTS dev_schema.users;
 -- DROP TABLE IF EXISTS dev_schema.users;
 
 -- Create the 'users' table if it doesn't exist
