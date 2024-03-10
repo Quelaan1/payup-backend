@@ -3,8 +3,9 @@
 import logging
 import random
 from datetime import datetime, timedelta
+from typing import Annotated
 from sqlalchemy.orm import sessionmaker
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 from ...cockroach_sql.database import database
 from ...config.constants import get_settings
@@ -36,6 +37,14 @@ class AuthService:
     The class methods interact with multiple services to facilitate auth endpoints.
     """
 
+    phone_repo: Annotated[PhoneRepo, Depends()]
+    user_repo: Annotated[UserRepo, Depends()]
+    profile_repo: Annotated[ProfileRepo, Depends()]
+    otp_repo: Annotated[OTPRepo, Depends()]
+
+    twilio_service: Annotated[TwilioService, Depends()]
+    user_service: Annotated[UserService, Depends()]
+
     def __init__(self):
         """
         Establish a connection to the database, creating Engine and Sessionmaker objects.
@@ -45,15 +54,6 @@ class AuthService:
         """
         self.engine = database.engine
         self.sessionmaker = sessionmaker(bind=self.engine)
-
-        self.phone_repo = PhoneRepo()
-        self.user_repo = UserRepo()
-        self.profile_repo = ProfileRepo()
-        self.otp_repo = OTPRepo()
-        # self.connect = PoolConnection()
-
-        self.twilio_service = TwilioService()
-        self.user_service = UserService()
 
     async def send_otp_sms(self, phone_number: str) -> OTPResponse:
         """send otp via sms"""

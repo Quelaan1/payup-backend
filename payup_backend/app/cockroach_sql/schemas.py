@@ -1,3 +1,5 @@
+"""Sqlalchemy model for cockroach db tables"""
+
 import uuid
 from datetime import datetime
 
@@ -126,3 +128,17 @@ class PhoneEntity(Base):
         Verify the password against the hashed password in the database.
         """
         return pwd_context.verify(password, self.m_pin)
+
+
+class Item(Base):
+    __tablename__ = "item_entities"
+    __table_args__ = {"schema": schema}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    entity_id = Column(String, index=True, unique=True)
+    entity_name = Column(String, nullable=True)
+    verified = Column(Boolean, default=False)
+    entity_type = Column(SmallInteger)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey(f"{schema}.users.id", ondelete="CASCADE")
+    )

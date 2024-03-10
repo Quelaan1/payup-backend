@@ -14,22 +14,10 @@ from .model import (
 )
 from ..auth.service import AuthService
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(lineno)d | %(filename)s : %(message)s",
-)
 logger = logging.getLogger(__name__)
-# class Foo:
-#     # Step 3: Add dependencies as class attributes
-#     x: int = Depends(get_x)
-
-#     @router.get("/somewhere")
-#     def bar(self) -> int:
-#         # Step 4: Use `self.<dependency_name>` to access shared dependencies
-#         return self.x
 
 
-class Auth:
+class AuthHandler:
     def __init__(self, name: str):
         self.name = name
         self.auth_service = AuthService()
@@ -67,6 +55,7 @@ class Auth:
         # )
 
     def hello(self):
+        logger.debug("Hello : %s", self.name)
         return {"Hello": self.name}
 
     async def send_otp_endpoint(self, otp_request: OTPRequestBase):
