@@ -7,6 +7,8 @@ from typing import Annotated
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException, status, Depends
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+
 from ...cockroach_sql.database import database
 from ...config.constants import get_settings
 from ...helperClass.verifications.phone.twilio import TwilioService
@@ -37,14 +39,6 @@ class AuthService:
     The class methods interact with multiple services to facilitate auth endpoints.
     """
 
-    phone_repo: Annotated[PhoneRepo, Depends()]
-    user_repo: Annotated[UserRepo, Depends()]
-    profile_repo: Annotated[ProfileRepo, Depends()]
-    otp_repo: Annotated[OTPRepo, Depends()]
-
-    twilio_service: Annotated[TwilioService, Depends()]
-    user_service: Annotated[UserService, Depends()]
-
     def __init__(self):
         """
         Establish a connection to the database, creating Engine and Sessionmaker objects.
@@ -55,11 +49,19 @@ class AuthService:
         self.engine = database.engine
         self.sessionmaker = sessionmaker(bind=self.engine)
 
+        self.phone_repo = PhoneRepo()
+        self.user_repo = UserRepo()
+        self.profile_repo = ProfileRepo()
+        self.otp_repo = OTPRepo()
+
+        self.twilio_service = TwilioService()
+        self.user_service = UserService()
+
     async def send_otp_sms(self, phone_number: str) -> OTPResponse:
         """send otp via sms"""
         try:
             # create random otp and store in db with expiry time
-            now = datetime.now()
+            now = datetime.utcnow()
             future_time = now + timedelta(minutes=30)
             otp_new = random.randint(100000, 999999)
 
@@ -70,7 +72,9 @@ class AuthService:
                 )
                 logger.info(db_phone_models)
                 if len(db_phone_models) == 0:
-                    db_phone = self.create_profile_txn(phone_number)
+                    db_phone = self.create_profile_txn(
+                        phone_number=phone_number, session=session
+                    )
                 else:
                     db_phone = db_phone_models[0]
                 db_otp_model = await self.otp_repo.update_or_create_obj(
@@ -81,6 +85,7 @@ class AuthService:
                         expires_at=future_time,
                     ),
                 )
+                session.commit()
 
             logger.info(db_otp_model.model_dump())
             response = await self.twilio_service.send_otp_sms(
@@ -89,26 +94,40 @@ class AuthService:
             return response
         except Exception as err:
             logger.error("error : %s", err)
-            return JSONResponse(
+            raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"message": str(err.args[0])},
-            )
+                detail=err.args,
+            ) from err
 
     async def verify_otp(self, phone_number: str, otp: int) -> OTPVerifyResponse:
         """verify phone otp via sms"""
         try:
             # get phone otp data from db
             with self.sessionmaker() as session:
-                otp_model = await self.otp_repo.get_otp_by_phone(
-                    session=session, phone_number=phone_number
+                # otp_model = await self.otp_repo.get_otp_by_phone(
+                #     session=session, phone_number=phone_number
+                # )
+
+                # if otp_model.m_otp != otp:
+                #     logger.info("otp didn't matched")
+                #     raise HTTPException(
+                #         status_code=status.HTTP_400_BAD_REQUEST,
+                #         detail="otp match failed",
+                #     )
+
+                otp_model = await self.otp_repo.delete_obj_related_by_number(
+                    session=session,
+                    phone_number=phone_number,
+                    col_filters=[(self.otp_repo._schema.m_otp, otp)],
                 )
 
-                if otp_model.m_otp != otp:
+                if otp_model is None:
                     logger.info("otp didn't matched")
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="otp match failed",
                     )
+
                 logger.info("otp matched successfully")
                 # change database states.
                 phone_model = await self.phone_repo.update_obj(
@@ -172,47 +191,33 @@ class AuthService:
     #         )
     #         return True
 
-    def create_profile_txn(self, phone_number: str):
-        """
-        Select a row of the profiles table, and return the row as a Profile object.
-
-        Arguments:
-            session {.Session} -- The active session for the database connection.
-
-        Keyword Arguments:
-            phone_number {String} -- The profile's phone_number. (default: {None})
-            profile_id {UUID} -- The profile's unique ID. (default: {None})
-
-        Returns:
-            Phone -- A Phone object.
-        """
+    def create_profile_txn(self, phone_number: str, session: Session):
 
         # create a profile entity
         # create a user entity
         # create a phone
-        with self.sessionmaker() as session:
-            db_profile = self.profile_repo.create_obj(
-                session=session, p_model=ProfileCreate()
-            )
+        db_profile = self.profile_repo.create_obj(
+            session=session, p_model=ProfileCreate()
+        )
 
-            db_user = self.user_repo.create_obj(
-                session=session,
-                p_model=UserCreate(
-                    profile_id=db_profile.id,
-                    user_type=UserType.USER,
-                    is_active=False,
-                    phone_lock=False,
-                ),
-            )
+        db_user = self.user_repo.create_obj(
+            session=session,
+            p_model=UserCreate(
+                profile_id=db_profile.id,
+                user_type=UserType.USER,
+                is_active=False,
+                phone_lock=False,
+            ),
+        )
 
-            db_phone = self.phone_repo.create_obj(
-                session=session,
-                p_model=PhoneCreate(
-                    m_number=phone_number,
-                    user_id=db_user.id,
-                    primary=True,
-                    verified=False,
-                ),
-            )
-
-            return PhoneModel.model_validate(db_phone)
+        db_phone = self.phone_repo.create_obj(
+            session=session,
+            p_model=PhoneCreate(
+                m_number=phone_number,
+                user_id=db_user.id,
+                primary=True,
+                verified=False,
+            ),
+        )
+        session.flush()
+        return PhoneModel.model_validate(db_phone)

@@ -44,12 +44,12 @@ class PhoneRepo:
         db_model = self._schema(**p_model.model_dump(exclude=["m_pin"], by_alias=True))
         if p_model.m_pin is not None:
             db_model.set_password(p_model.m_pin.get_secret_value())
-        logger.info("db_model : %s", db_model)
+        logger.debug("db_model : %s", db_model)
         session.add(db_model)
-        session.commit()
+        session.flush()
         session.refresh(db_model)
         p_resp = PhoneModel.model_validate(db_model)
-        logger.info("[response]-[%s]", p_resp.model_dump())
+        logger.debug("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
     async def update_obj(self, session: Session, obj_id: UUID, p_model: PhoneUpdate):
@@ -70,17 +70,17 @@ class PhoneRepo:
             )
 
         session.add(db_model)
-        session.commit()
+        session.flush()
         session.refresh(db_model)
 
-        logger.info("Phone updated: %s", db_model.id)
+        logger.debug("Phone updated: %s", db_model.id)
         return db_model
 
     def delete_obj(self, session: Session, obj_id: UUID) -> None:
         """deletes phone entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
         result = session.execute(stmt)
-        session.commit()
+        session.flush()
         logger.info("Rows updated: %s", result.rowcount)
 
     def get_obj_by_filter(
