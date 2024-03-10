@@ -1,2 +1,17 @@
 runtime: python311
-entrypoint: gunicorn -w 4 main:app
+entrypoint: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
+env_variables:
+  TWILIO_BASE_URL: "https://verify.twilio.com/v2/"
+  TWILIO_ACCOUNT_SID: "ACd08afd2fd40039ead1907c3747a29b69"
+  TWILIO_AUTH_TOKEN: "ca0863fe61a7d4b9dc9cd07b9f418c70"
+  TWILIO_SMS_SERVICE_SID: "VA2ef9512c24b62c4f09e870cc80ff425b"
+  TWILIO_PHONE_NUMBER: "+12706979772"
+
+  SANDBOX_SECRET_KEY: "secret_live_AeUXJbL6yrTxeZBv8uaxSX51dhVmkDNS"
+  SANDBOX_API_KEY: "key_live_lA5Q5ZvhNWRs4FQSvkpvk6nI9oPKzLBD"
+
+  COCKROACH_PASSWORD: "tEdndrSuSZGDyhyEIb4QWQ"
+  COCKROACH_USER: "dev"
+  COCKROACH_DB: "app_dev"
+  COCKROACH_CLUSTER: "oozing-turtle"
+  COCKROACH_DB_URI: "oozing-turtle-8617.8nk.gcp-asia-southeast1.cockroachlabs.cloud:26257"
