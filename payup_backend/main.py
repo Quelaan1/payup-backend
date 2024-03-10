@@ -28,7 +28,7 @@ app.add_middleware(LoggingMiddleware, logger=logging.getLogger("[REQUEST LOGGER]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "*",
+        "http://*",
         "http://localhost",
         "http://localhost:8080",
     ],

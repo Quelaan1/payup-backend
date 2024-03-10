@@ -104,16 +104,6 @@ class AuthService:
         try:
             # get phone otp data from db
             with self.sessionmaker() as session:
-                # otp_model = await self.otp_repo.get_otp_by_phone(
-                #     session=session, phone_number=phone_number
-                # )
-
-                # if otp_model.m_otp != otp:
-                #     logger.info("otp didn't matched")
-                #     raise HTTPException(
-                #         status_code=status.HTTP_400_BAD_REQUEST,
-                #         detail="otp match failed",
-                #     )
 
                 otp_model = await self.otp_repo.delete_obj_related_by_number(
                     session=session,
@@ -139,14 +129,16 @@ class AuthService:
                 data = self.profile_repo.get_profile_by_user(
                     session=session, user_id=phone_model.user_id
                 )
+                session.commit()
 
             return OTPVerifyResponse.model_validate(data)
-
+        except HTTPException as err:
+            raise err
         except Exception as err:
             logger.error("error : %s", err)
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=err.args[0],
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR_BAD_REQUEST,
+                detail=err.args,
             ) from err
 
     # async def create_user_txn(
