@@ -41,7 +41,7 @@ class TwilioService:
         except TwilioRestException as twilio_error:
             logger.error(twilio_error.args)
             raise ExternalServiceError(
-                name=__name__, detail=BaseResponse(message=twilio_error.args)
+                name=__name__, detail=BaseResponse(message=twilio_error.msg)
             ) from twilio_error
 
         if verification.status == "pending":
@@ -50,6 +50,9 @@ class TwilioService:
     async def send_otp_sms(self, phone_number: str, otp: str):
         """send otp via sms"""
         try:
+            # verification = self.client.messages.create(
+            #     from_="+19144990713", body="asdadsa", to="+919990912228"
+            # )
             verification = self.client.messages.create(
                 to="+91" + phone_number,
                 from_=constants.TWILIO.PHONE_NUMBER,
@@ -68,7 +71,7 @@ class TwilioService:
         except TwilioRestException as twilio_error:
             logger.error(twilio_error.args)
             raise ExternalServiceError(
-                name=__name__, detail=BaseResponse(message=twilio_error.args)
+                name=__name__, detail=BaseResponse(message=twilio_error.msg)
             ) from twilio_error
 
     async def verify_otp(self, phone_number: str, otp: str):
@@ -91,7 +94,7 @@ class TwilioService:
         except TwilioRestException as twilio_error:
             logger.error(twilio_error.args)
             raise ExternalServiceError(
-                name=__name__, detail=BaseResponse(message=twilio_error.args)
+                name=__name__, detail=BaseResponse(message=twilio_error.msg)
             ) from twilio_error
 
 

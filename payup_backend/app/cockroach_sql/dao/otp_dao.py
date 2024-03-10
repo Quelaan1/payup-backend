@@ -95,7 +95,58 @@ class OTPRepo:
         stmt = delete(self._schema).where(self._schema.id == obj_id)
         result = session.execute(stmt)
         session.commit()
-        logger.info("Rows updated: %s", result.rowcount)
+        logger.info("Rows deleted: %s", result.rowcount)
+
+    async def delete_obj_related_by_number(
+        self, session: Session, phone_number: str, col_filters: list[tuple[Column, Any]]
+    ):
+        """Attempts to delete an otp entity from db and returns the deleted object if successful."""
+        # Fetch and delete in a single transaction
+        stmt = select(self._schema)
+        stmt = stmt.join_from(
+            PhoneSchema,
+            self._schema,
+            PhoneSchema.id == self._schema.id,
+        ).where(PhoneSchema.m_number == phone_number)
+        for col, val in col_filters:
+            stmt = stmt.where(col == val)
+        obj_to_delete = session.execute(stmt)
+        db_model = obj_to_delete.scalars().first()
+
+        if db_model is None:
+            logger.info("Object not found with filters: %s", col_filters)
+            return None  # Object not found, can't delete
+
+        delete_stmt = delete(self._schema)
+        for col, val in col_filters:
+            delete_stmt = delete_stmt.where(col == val)
+        result = session.execute(delete_stmt)
+        session.commit()
+
+        logger.info("Rows deleted: %s", result.rowcount)
+        return OTPModel.model_validate(db_model)
+
+    async def delete_obj_by_filter(
+        self, session: Session, col_filters: list[tuple[Column, Any]]
+    ):
+        """Attempts to delete an otp entity from db and returns the deleted object if successful."""
+        # Fetch and delete in a single transaction
+        stmt = select(self._schema)
+        for col, val in col_filters:
+            stmt = stmt.where(col == val)
+        objs_to_delete = session.execute(stmt).scalars().all()
+
+        if objs_to_delete is None:
+            logger.info("Object not found with filters: %s", col_filters)
+            return None  # Object not found, can't delete
+
+        delete_stmt = delete(self._schema)
+        for col, val in col_filters:
+            delete_stmt = delete_stmt.where(col == val)
+        result = session.execute(delete_stmt)
+        session.commit()
+
+        logger.info("Rows deleted: %s", result.rowcount)
 
     async def get_obj_by_filter(
         self, session: Session, col_filters: list[tuple[Column, Any]]
