@@ -34,6 +34,8 @@ dev.Dockerfile
 .vscode
 .venv
 flyway.toml
+*.lock
+.gcloudignore
 
 # local files
 __pycache__/
