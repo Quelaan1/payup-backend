@@ -42,10 +42,12 @@ class OTP(OTPBase):
     expires_at: datetime
 
 
-class CredentialUpdate(BaseModel):
-    m_pin: Optional[str] = None
-    phone_lock: Optional[bool] = None
-    phone_number: str
+class Credential(BaseModel):
+    m_pin: Annotated[int, Field(..., ge=100000, lt=1000000)]
+    phone_number: Annotated[
+        str,
+        Field(..., pattern=r"^\d{10}$"),
+    ]
 
 
 class RegisterNumberRequestBase(BaseModel):

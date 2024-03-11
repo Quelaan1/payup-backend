@@ -2,7 +2,7 @@
 
 import logging
 from uuid import UUID
-from typing import Any
+from typing import Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select, delete, update, Column
 from sqlalchemy.dialects import postgresql
@@ -52,9 +52,26 @@ class PhoneRepo:
         logger.debug("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
-    async def update_obj(self, session: Session, obj_id: UUID, p_model: PhoneUpdate):
+    async def update_obj(
+        self,
+        session: Session,
+        obj_id: UUID,
+        p_model: PhoneUpdate,
+        col_filters: Optional[list[tuple[Column, Any]]] = None,
+    ):
         """update phone given its primary key and update model"""
-        db_model = session.get(self._schema, obj_id)
+        # db_model = session.get(self._schema, obj_id)
+        stmt = select(self._schema).where(self._schema.id, obj_id)
+        for col, val in col_filters:
+            stmt = stmt.where(col == val)
+        # Compile the statement to a string of raw SQL
+        compiled_stmt = stmt.compile(
+            dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+        )
+
+        # Log the raw SQL statement
+        logger.info(compiled_stmt)
+        db_model = session.execute(stmt).scalars().first()
         if db_model is None:
             raise NotFoundError(
                 name=__name__, detail=BaseResponse(detail="Phone not found")

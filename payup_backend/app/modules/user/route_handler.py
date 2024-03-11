@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from .model import UserCreate, User as UserModel
 from .service import UserService
-from ...dependency.session import authenticate_user
+from ...dependency.authentication import get_current_active_user
 from ...cockroach_sql.schemas import User
 
 logging.basicConfig(
@@ -23,7 +23,7 @@ user_service = UserService()
 def read_users(
     skip: int = 0,
     limit: int = 100,
-    user: User = Depends(authenticate_user),
+    user=Depends(get_current_active_user),
 ):
     try:
         users = user_service.get_users(skip=skip, limit=limit)

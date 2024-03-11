@@ -2,11 +2,10 @@
 
 import logging
 import random
+from uuid import UUID
 from datetime import datetime, timedelta
-from typing import Annotated
 from sqlalchemy.orm import sessionmaker
-from fastapi import HTTPException, status, Depends
-from fastapi.responses import JSONResponse
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from ...cockroach_sql.database import database
@@ -70,13 +69,14 @@ class AuthService:
                 db_phone_models = self.phone_repo.get_obj_by_filter(
                     session=session, col_filters=[(PhoneEntity.m_number, phone_number)]
                 )
-                logger.info(db_phone_models)
+                logger.debug(db_phone_models)
                 if len(db_phone_models) == 0:
                     db_phone = self.create_profile_txn(
                         phone_number=phone_number, session=session
                     )
                 else:
                     db_phone = db_phone_models[0]
+
                 db_otp_model = await self.otp_repo.update_or_create_obj(
                     session=session,
                     p_model=OTPCreate(
@@ -87,7 +87,7 @@ class AuthService:
                 )
                 session.commit()
 
-            logger.info(db_otp_model.model_dump())
+            logger.debug(db_otp_model.model_dump())
             response = await self.twilio_service.send_otp_sms(
                 phone_number, str(otp_new)
             )
@@ -112,13 +112,13 @@ class AuthService:
                 )
 
                 if otp_model is None:
-                    logger.info("otp didn't matched")
+                    logger.debug("otp didn't matched")
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="otp match failed",
                     )
 
-                logger.info("otp matched successfully")
+                logger.debug("otp matched successfully")
                 # change database states.
                 phone_model = await self.phone_repo.update_obj(
                     session=session,
@@ -141,9 +141,7 @@ class AuthService:
                 detail=err.args,
             ) from err
 
-    # async def create_user_txn(
-    #     self, user_body: UserCreate, verifier_body: VerifierCreate
-    # ):
+    # async def set_credentials_txn(self, phone_number: str, pin: int, user_id: UUID):
     #     """
     #     Wraps a `run_transaction` call that creates an user.
 
@@ -154,25 +152,26 @@ class AuthService:
     #     """
 
     #     with self.sessionmaker() as session:
-    #         new_user = self.user_repo.create_obj(p_model=user_body, session=session)
-    #         verifier_body.user_id = new_user.id
-    #         _ = self.verifier_repo.create_obj(session=session, p_model=verifier_body)
-    #         return new_user
-
-    # async def set_credentials_txn(self, verifier_body: VerifierUpdate):
-    #     """
-    #     Wraps a `run_transaction` call that creates an user.
-
-    #     Arguments:
-    #         user_body {UserCreate} -- The user's validated pydantic model.
-    #         verifier_body {VerifierCreate} -- The user's validated providers pydantic model.
-
-    #     """
-
-    #     with self.sessionmaker() as session:
-    #         creds = self.verifier_repo.get_obj_by_filter(
-    #             session=session, cols=["user_id"], col_vals=[verifier_body.user_id]
+    #         creds = self.phone_repo.get_obj_by_filter(
+    #             session=session, col_filters=[
+    #                 (self.phone_repo._schema.m_number, phone_number),
+    #                 (self.phone_repo._schema.is_primary, True),
+    #                 (self.phone_repo._schema.verified, True)
+    #             ]
     #         )
+
+    #         if len(creds) == 0:
+    #             raise HTTPException(
+    #                 status_code=status.HTTP_400_BAD_REQUEST,
+    #                 detail="phone number not verified as a primary account number"
+    #             )
+    #         elif len(creds) > 0:
+    #             raise HTTPException(
+    #                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #                 detail="database discrepancy",
+    #             )
+
+    #         db_phone = creds[0]
     #         for _, cred in enumerate(creds):
     #             if cred.phone_number == verifier_body.phone_number:
     #                 obj_id = cred.id

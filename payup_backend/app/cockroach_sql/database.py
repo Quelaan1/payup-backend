@@ -1,5 +1,5 @@
 import logging
-
+import tempfile
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -63,14 +63,38 @@ class Database(object):
             self._db = config.COCKROACH.DB
             conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
 
-            self._engine = create_engine(
-                conn_str,
-                pool_pre_ping=True,
-                pool_recycle=1800,
-                poolclass=QueuePool,
-                pool_use_lifo=True,
-                pool_size=5,
-            )
+            if config.ENV == "local":
+                # Write the certificate content to a temporary file
+                cert_file_path = tempfile.mktemp(suffix=".crt")
+                with open(cert_file_path, "w") as cert_file:
+                    cert_file.write(config.COCKROACH.DB_CERT)
+                conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full&sslrootcert={cert_file_path}"
+                # conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
+
+                self._engine = create_engine(
+                    conn_str,
+                    pool_pre_ping=True,
+                    pool_recycle=1800,
+                    poolclass=QueuePool,
+                    pool_use_lifo=True,
+                    pool_size=5,
+                )
+            elif config.ENV == "prod":
+
+                # Write the certificate content to a temporary file
+                cert_file_path = tempfile.mktemp(suffix=".crt")
+                with open(cert_file_path, "w") as cert_file:
+                    cert_file.write(config.COCKROACH.DB_CERT)
+                conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full&sslrootcert={cert_file_path}"
+
+                self._engine = create_engine(
+                    conn_str,
+                    pool_pre_ping=True,
+                    pool_recycle=1800,
+                    poolclass=QueuePool,
+                    pool_use_lifo=True,
+                    pool_size=5,
+                )
         return self._engine
 
     @property

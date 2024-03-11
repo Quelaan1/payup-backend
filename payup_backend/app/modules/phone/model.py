@@ -36,3 +36,13 @@ class Phone(PhoneBase):
     m_number: int
     m_pin: Optional[str]
     user_id: UUID4
+
+
+class PhoneResponse(PhoneBase):
+    """phone model returned from phone_dao"""
+
+    id: UUID4
+    is_primary: bool
+    verified: bool
+    m_number: int
+    pin: bool

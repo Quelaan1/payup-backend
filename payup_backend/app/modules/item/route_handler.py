@@ -7,8 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from .model import ItemCreate, Item as ItemModel
 from .service import ItemService
-from ...dependency.session import authenticate_user
-from ...cockroach_sql.schemas import User
+from ...dependency.authentication import get_current_active_user
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,6 +26,10 @@ class ItemHandler:
         self.name = name
         self.item_service = ItemService()
         self.router = APIRouter()
+
+        self.router.add_api_route(
+            "/healthz", self.hello, methods=["GET"], tags=["health-check"]
+        )
         self.router.add_api_route(
             "/",
             endpoint=self.read_items_endpoint,
@@ -44,11 +47,15 @@ class ItemHandler:
             response_model_exclude_none=True,
         )
 
+    def hello(self):
+        logger.debug("Hello : %s", self.name)
+        return {"Hello": self.name}
+
     async def read_items_endpoint(
         self,
         skip: int = 0,
         limit: int = 100,
-        user: User = Depends(authenticate_user),
+        user=Depends(get_current_active_user),
     ):
         try:
             logger.info(self.token)
@@ -60,7 +67,7 @@ class ItemHandler:
     async def create_item_endpoint(
         self,
         item: ItemCreate,
-        user: User = Depends(authenticate_user),
+        user=Depends(get_current_active_user),
     ):
         try:
             return self.item_service.create_item(item, user.id)
