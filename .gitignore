@@ -41,3 +41,5 @@ flyway.toml
 __pycache__/
 .idea/
 *.ipynb
+
+app.yaml
