@@ -132,13 +132,13 @@ class AuthService:
                 session.commit()
 
             return OTPVerifyResponse.model_validate(data)
-        except HTTPException as err:
-            raise err
-        except Exception as err:
-            logger.error("error : %s", err)
+        except (
+            Exception
+        ) as err:  # This will catch any exception that is not an HTTPException
+            logger.error("error : %s", err.args)
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR_BAD_REQUEST,
-                detail=err.args,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(err.args),
             ) from err
 
     # async def set_credentials_txn(self, phone_number: str, pin: int, user_id: UUID):

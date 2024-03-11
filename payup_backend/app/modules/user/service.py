@@ -44,7 +44,9 @@ class UserService:
             user_id {UUID} -- The user's unique ID.
         """
         with self.sessionmaker() as session:
-            return self._repo.create_obj(p_model=req_body, session=session)
+            user = self._repo.create_obj(p_model=req_body, session=session)
+            session.commit()
+        return user
 
     async def get_users(self, skip, limit):
         """
@@ -76,14 +78,12 @@ class UserService:
         """
         with self.sessionmaker() as session:
             if user_id is not None:
-                return self._repo.get_obj(session, user_id)
-            if phone_number is not None:
-                # check if user exists
-                user = self._repo.get_user_txn(session, phone_number)
-                return user
-            raise ValueError(
-                {"key": "user_id, phone_number", "message": "value not provided"}
-            )
+                user = self._repo.get_obj(session, user_id)
+            # if phone_number is not None:
+            #     # check if user exists
+            #     user = self._repo.get_user_txn(session, phone_number)
+
+        return user
 
 
 # if user is None:

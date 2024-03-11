@@ -61,9 +61,10 @@ class PhoneRepo:
     ):
         """update phone given its primary key and update model"""
         # db_model = session.get(self._schema, obj_id)
-        stmt = select(self._schema).where(self._schema.id, obj_id)
-        for col, val in col_filters:
-            stmt = stmt.where(col == val)
+        stmt = select(self._schema).where(self._schema.id == obj_id)
+        if col_filters is not None:
+            for col, val in col_filters:
+                stmt = stmt.where(col == val)
         # Compile the statement to a string of raw SQL
         compiled_stmt = stmt.compile(
             dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}

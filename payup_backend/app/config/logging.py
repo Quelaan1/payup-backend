@@ -19,7 +19,7 @@ class LogConfig(BaseSettings):
     @model_validator(mode="after")
     def set_log_level_based_on_env(self):
         env = self.ENV
-        if env == "production":
+        if env == "prod":
             self.LOG_LEVEL = "INFO"
         else:
             self.LOG_LEVEL = "DEBUG"

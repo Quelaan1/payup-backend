@@ -51,6 +51,7 @@ class PhoneService:
                     ],
                 )
                 logger.debug("phones : %s", p_models)
+                session.commit()
 
             return [PhoneResponse.model_validate(p_model) for p_model in p_models]
         except Exception as err:
@@ -90,6 +91,7 @@ class PhoneService:
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="phone number not verified as a primary account number",
                     )
+                session.commit()
             return PhoneResponse.model_validate(p_model)
         except NotFoundError as err:
             raise NotFoundError from err

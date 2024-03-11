@@ -47,7 +47,9 @@ class VerifierService:
         """
 
         with self.sessionmaker() as session:
-            return self._repo.create_obj(p_model=req_body, session=session)
+            res = self._repo.create_obj(p_model=req_body, session=session)
+            session.commit()
+            return res
 
     async def get_credential(
         self, phone_number: Optional[str] = None, user_id: Optional[UUID4] = None
@@ -72,6 +74,7 @@ class VerifierService:
                     session=session, phone_number=phone_number
                 )
                 return credential
+            session.commit()
             raise ValueError(
                 "atleast one of the arguments phone_number, user_id is required"
             )

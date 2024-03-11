@@ -42,7 +42,7 @@ class OTPRepo:
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
-        session.commit()
+        session.flush()
         session.refresh(db_model)
         p_resp = OTPModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
@@ -59,7 +59,7 @@ class OTPRepo:
             .execution_options(synchronize_session="fetch")
         )
         result = session.execute(stmt)
-        session.commit()
+        session.flush()
 
         logger.info("Rows updated: %s", result.rowcount)
         result.close()
@@ -84,7 +84,7 @@ class OTPRepo:
             db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
             session.add(db_model)
 
-        session.commit()
+        session.flush()
         session.refresh(db_model)
         p_resp = OTPModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
@@ -94,7 +94,7 @@ class OTPRepo:
         """deletes otp entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
         result = session.execute(stmt)
-        session.commit()
+        session.refresh()
         logger.info("Rows deleted: %s", result.rowcount)
 
     async def delete_obj_related_by_number(
@@ -121,7 +121,7 @@ class OTPRepo:
         for col, val in col_filters:
             delete_stmt = delete_stmt.where(col == val)
         result = session.execute(delete_stmt)
-        session.commit()
+        session.flush()
 
         logger.info("Rows deleted: %s", result.rowcount)
         return OTPModel.model_validate(db_model)
@@ -144,7 +144,7 @@ class OTPRepo:
         for col, val in col_filters:
             delete_stmt = delete_stmt.where(col == val)
         result = session.execute(delete_stmt)
-        session.commit()
+        session.flush()
 
         logger.info("Rows deleted: %s", result.rowcount)
 

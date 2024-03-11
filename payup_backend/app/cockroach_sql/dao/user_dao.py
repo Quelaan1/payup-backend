@@ -41,7 +41,7 @@ class UserRepo:
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
-        session.commit()
+        session.flush()
         session.refresh(db_model)
         p_resp = UserModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
@@ -56,7 +56,7 @@ class UserRepo:
             .execution_options(synchronize_session="fetch")
         )
         result = session.execute(stmt)
-        session.commit()
+        session.flush()
 
         logger.info("Rows updated: %s", result.rowcount)
         result.close()
@@ -65,7 +65,7 @@ class UserRepo:
         """deletes user entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
         result = session.execute(stmt)
-        session.commit()
+        session.flush()
         logger.info("Rows updated: %s", result.rowcount)
 
     def get_obj_by_filter(

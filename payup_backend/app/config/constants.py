@@ -30,7 +30,6 @@ class CockroachSettings(BaseSettings):
     CLUSTER: str
     DB: str
     DB_URI: str
-    # DB_CERT: Optional[str] = None
 
     def __str__(self):
         return settings_as_string(self.model_dump(), "COCKROACH")
