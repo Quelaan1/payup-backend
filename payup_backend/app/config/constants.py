@@ -1,7 +1,9 @@
 """loads environment constants in code"""
 
+from typing import Optional
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from google.cloud import secretmanager
 
 
 class SandboxSettings(BaseSettings):
@@ -30,9 +32,26 @@ class CockroachSettings(BaseSettings):
     CLUSTER: str
     DB: str
     DB_URI: str
+    DB_CERT: Optional[str] = None
+
+    def __init__(self):
+        self.set_db_cert()
 
     def __str__(self):
         return settings_as_string(self.model_dump(), "COCKROACH")
+
+        # Access the secret version.
+        # Create the Secret Manager client.
+
+    def set_db_cert(self):
+        client = secretmanager.SecretManagerServiceClient()
+        response = client.access_secret_version(
+            request={"name": "projects/803591674308/secrets/Cockroach_DB/versions/1"}
+        )
+
+        payload = response.payload.data.decode("UTF-8")
+        self.DB_CERT = payload
+        print(f"Plaintext: {payload}")
 
 
 class TwilioSettings(BaseSettings):
@@ -65,10 +84,12 @@ class Settings(BaseSettings):
         return settings_as_string(self.model_dump())
 
 
-@lru_cache
+# @lru_cache
 def get_settings():
     """returns a cached instance of Settings"""
-    return Settings()
+    setting = Settings()
+    print(setting.model_dump())
+    return setting
 
 
 def settings_as_string(data: dict, prefix_key: str = "") -> str:

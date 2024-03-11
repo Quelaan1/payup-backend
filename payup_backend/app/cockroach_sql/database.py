@@ -63,14 +63,26 @@ class Database(object):
             self._db = config.COCKROACH.DB
             conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
 
-            self._engine = create_engine(
-                conn_str,
-                pool_pre_ping=True,
-                pool_recycle=1800,
-                poolclass=QueuePool,
-                pool_use_lifo=True,
-                pool_size=5,
-            )
+            if config.ENV == "local":
+                self._engine = create_engine(
+                    conn_str,
+                    pool_pre_ping=True,
+                    pool_recycle=1800,
+                    poolclass=QueuePool,
+                    pool_use_lifo=True,
+                    pool_size=5,
+                    connect_args={"ssl_ca": config.COCKROACH.DB_CERT},
+                )
+            elif config.ENV == "prod":
+                self._engine = create_engine(
+                    conn_str,
+                    pool_pre_ping=True,
+                    pool_recycle=1800,
+                    poolclass=QueuePool,
+                    pool_use_lifo=True,
+                    pool_size=5,
+                    connect_args={"ssl_ca": config.COCKROACH.DB_CERT},
+                )
         return self._engine
 
     @property
