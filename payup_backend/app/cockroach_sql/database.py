@@ -64,7 +64,12 @@ class Database(object):
             conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
 
             if config.ENV == "local":
-                conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
+                # Write the certificate content to a temporary file
+                cert_file_path = tempfile.mktemp(suffix=".crt")
+                with open(cert_file_path, "w") as cert_file:
+                    cert_file.write(config.COCKROACH.DB_CERT)
+                conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full&sslrootcert={cert_file_path}"
+                # conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
 
                 self._engine = create_engine(
                     conn_str,
