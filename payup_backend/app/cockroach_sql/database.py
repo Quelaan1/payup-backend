@@ -1,5 +1,5 @@
 import logging
-
+import tempfile
 from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -64,6 +64,8 @@ class Database(object):
             conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
 
             if config.ENV == "local":
+                conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
+
                 self._engine = create_engine(
                     conn_str,
                     pool_pre_ping=True,
@@ -71,9 +73,15 @@ class Database(object):
                     poolclass=QueuePool,
                     pool_use_lifo=True,
                     pool_size=5,
-                    connect_args={"ssl_ca": config.COCKROACH.DB_CERT},
                 )
             elif config.ENV == "prod":
+
+                # Write the certificate content to a temporary file
+                cert_file_path = tempfile.mktemp(suffix=".crt")
+                with open(cert_file_path, "w") as cert_file:
+                    cert_file.write(config.COCKROACH.DB_CERT)
+                conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full&sslrootcert={cert_file_path}"
+
                 self._engine = create_engine(
                     conn_str,
                     pool_pre_ping=True,
@@ -81,7 +89,6 @@ class Database(object):
                     poolclass=QueuePool,
                     pool_use_lifo=True,
                     pool_size=5,
-                    connect_args={"ssl_ca": config.COCKROACH.DB_CERT},
                 )
         return self._engine
 
