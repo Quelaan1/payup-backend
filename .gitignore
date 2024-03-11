@@ -43,3 +43,5 @@ app.yaml
 __pycache__/
 .idea/
 *.ipynb
+
+app.yaml

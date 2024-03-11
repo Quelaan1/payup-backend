@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from ..config.constants import get_settings
+from ..helperClass.utils import set_db_cert
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,9 +66,11 @@ class Database(object):
 
             if config.ENV == "local":
                 # Write the certificate content to a temporary file
+                data = set_db_cert()
+                logger.info("cert_data: %s", data)
                 cert_file_path = tempfile.mktemp(suffix=".crt")
                 with open(cert_file_path, "w") as cert_file:
-                    cert_file.write(config.COCKROACH.DB_CERT)
+                    cert_file.write(data)
                 conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full&sslrootcert={cert_file_path}"
                 # conn_str = f"cockroachdb://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
 
