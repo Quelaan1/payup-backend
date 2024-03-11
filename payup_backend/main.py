@@ -3,17 +3,17 @@ from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from .app.config.logging import LogConfig
-from .app.config.exception_handler import CustomExceptionHandler
-from .app.config.errors import (
+from app.config.logging import LogConfig
+from app.config.exception_handler import CustomExceptionHandler
+from app.config.errors import (
     ConfigError,
     DatabaseError,
     ExternalServiceError,
     NotFoundError,
 )
-from .app.config.constants import get_settings
-from .app.routers.api_routes import router as api_router
-from .app.helperClass.logging_lib import LoggingMiddleware
+from app.config.constants import get_settings
+from app.routers.api_routes import router as api_router
+from app.helperClass.logging_lib import LoggingMiddleware
 
 log_config = LogConfig()
 logging.config.dictConfig(log_config.logging_config)
