@@ -21,7 +21,7 @@ from ...cockroach_sql.dao.phone_dao import PhoneRepo
 from ...cockroach_sql.dao.otp_dao import OTPRepo
 from ...cockroach_sql.dao.profile_dao import ProfileRepo
 from ...cockroach_sql.dao.user_dao import UserRepo
-from ..profile.model import ProfileCreate
+from ..profile.model import ProfileCreate, Profile as ProfileModel
 from ..phone.model import PhoneCreate, Phone as PhoneModel, PhoneUpdate
 
 logging.basicConfig(
@@ -99,7 +99,7 @@ class AuthService:
                 detail=err.args,
             ) from err
 
-    async def verify_otp(self, phone_number: str, otp: int) -> OTPVerifyResponse:
+    async def verify_otp(self, phone_number: str, otp: int) -> ProfileModel:
         """verify phone otp via sms"""
         try:
             # get phone otp data from db
@@ -131,7 +131,7 @@ class AuthService:
                 )
                 session.commit()
 
-            return OTPVerifyResponse.model_validate(data)
+            return ProfileModel.model_validate(data)
         except (
             Exception
         ) as err:  # This will catch any exception that is not an HTTPException

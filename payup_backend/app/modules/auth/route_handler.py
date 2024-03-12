@@ -14,6 +14,7 @@ from .model import (
     Credential,
 )
 from ..auth.service import AuthService
+from ..auth.token_service import TokenService
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,10 @@ class AuthHandler:
     def __init__(self, name: str):
         self.name = name
         self.auth_service = AuthService()
+        self.token_service = TokenService()
+
         self.router = APIRouter()
+
         self.router.add_api_route(
             "/healthz", self.hello, methods=["GET"], tags=["health-check"]
         )
@@ -53,7 +57,7 @@ class AuthHandler:
         self.router.add_api_route(
             "/login",
             endpoint=self.login_endpoint,
-            status_code=status.HTTP_201_CREATED,
+            status_code=status.HTTP_200_OK,
             response_model=AuthResponse,
             methods=["POST"],
         )
@@ -68,11 +72,15 @@ class AuthHandler:
         return response
 
     async def verify_otp_endpoint(self, otp_verify: OTPVerifyRequest):
-        response = await self.auth_service.verify_otp(
+        profile_data = await self.auth_service.verify_otp(
             otp_verify.phone_number, otp_verify.otp
         )
-        logger.info(response.model_dump())
-        return response
+        logger.info(profile_data.model_dump())
+
+        token_data = await self.token_service.create_new_tokens(
+            profile_id=profile_data.id
+        )
+        return AuthResponse(token_data=token_data, user_data=profile_data)
 
     async def set_pin_endpoint(self, data: Credential):
         # querying database to check if phone already exist
@@ -87,6 +95,7 @@ class AuthHandler:
             data["scopes"].append(scope)
 
         logger.info(dict(form_data))
+        # verify credentials
 
         # user = db.get(form_data.username, None)
         # if user is None:

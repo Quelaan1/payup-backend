@@ -142,3 +142,54 @@ class Item(Base):
     user_id = Column(
         UUID(as_uuid=True), ForeignKey(f"{schema}.users.id", ondelete="CASCADE")
     )
+
+
+class RefreshTokenEntity(Base):
+    """
+    Has ttl of 1 month.
+    On creating refresh token create or update row for corresponding token family.
+
+    To validate Refresh_token:
+        - use "updated_at" == "iat"
+        - use "expires_on" == "exp"
+        - use "id" == "token_family"
+
+    To Recreate update for "id"=="token_family":
+        - "token_id" = "new_jti"
+        - "expires_on" = "new_datetime"
+
+    on Signout:
+        - delete all tokens for "user_id"
+
+    """
+
+    __tablename__ = "refresh_token_entities"
+    __table_args__ = {"schema": schema}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    jti = Column(UUID, index=True, unique=True)
+    expires_on = Column(DateTime)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey(f"{schema}.users.id", ondelete="CASCADE")
+    )
+
+
+class AccessTokenBlacklist(Base):
+    """
+    Has ttl of 24 Hours.
+
+    Entry for black_listed access_token.
+
+    On SignOut:
+        - add access token.
+
+    To validate access_token:
+        - check "id"="jti" in this table or not
+
+    """
+
+    __tablename__ = "access_token_blacklists"
+    __table_args__ = {"schema": schema}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    expires_on = Column(DateTime)

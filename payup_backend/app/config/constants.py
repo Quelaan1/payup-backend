@@ -1,5 +1,7 @@
 """loads environment constants in code"""
 
+from typing import Any, Optional, Union
+from pydantic import Field, model_validator
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -7,12 +9,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class SandboxSettings(BaseSettings):
     """creates a singleton constants instance"""
 
+    API_KEY: str
+    SECRET_KEY: str
+
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="sandbox_", extra="ignore"
     )
-
-    API_KEY: str
-    SECRET_KEY: str
 
     def __str__(self):
         return settings_as_string(self.model_dump(), "SANDBOX")
@@ -21,31 +23,57 @@ class SandboxSettings(BaseSettings):
 class CockroachSettings(BaseSettings):
     """creates a singleton constants instance"""
 
-    model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="cockroach_", extra="ignore"
-    )
-
     PASSWORD: str
     USER: str
     CLUSTER: str
     DB: str
     DB_URI: str
 
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="cockroach_", extra="ignore"
+    )
+
     def __str__(self):
         return settings_as_string(self.model_dump(), "COCKROACH")
+
+
+class TokenSettings(BaseSettings):
+    """creates a singleton constants instance"""
+
+    SECRET_KEY: str
+    ALGORITHM: str
+    ISSUER: str
+    AUDIENCE: Union[str, list[str]]
+    ACCESS_TOKEN_DURATION: int  # in minutes
+    REFRESH_TOKEN_DURATION: int  # in minutes
+
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="jt_", extra="ignore")
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_card_number_omitted(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "AUDIENCE" in data.keys():
+                val = data.get("AUDIENCE").split(",")
+                data["AUDIENCE"] = val
+        return data
+
+    def __str__(self):
+        return settings_as_string(self.model_dump(), "JT")
 
 
 class TwilioSettings(BaseSettings):
     """creates a singleton constants instance"""
 
-    model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="twilio_", extra="ignore"
-    )
     BASE_URL: str
     ACCOUNT_SID: str
     AUTH_TOKEN: str
     SMS_SERVICE_SID: str
     PHONE_NUMBER: str
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="twilio_", extra="ignore"
+    )
 
     def __str__(self):
         return settings_as_string(self.model_dump(), "TWILIO")
@@ -54,12 +82,13 @@ class TwilioSettings(BaseSettings):
 class Settings(BaseSettings):
     """creates a singleton constants instance"""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
     ENV: str = "local"
     TWILIO: TwilioSettings = TwilioSettings()
     SANDBOX: SandboxSettings = SandboxSettings()
     COCKROACH: CockroachSettings = CockroachSettings()
+    JT: TokenSettings = TokenSettings()
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     def __str__(self):
         return settings_as_string(self.model_dump())

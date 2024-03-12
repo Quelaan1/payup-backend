@@ -12,7 +12,7 @@ from .app.config.errors import (
     NotFoundError,
 )
 from .app.config.constants import get_settings
-from .app.routers.api_routes import router as api_router
+from .app.app import router as api_router
 from .app.helperClass.logging_lib import LoggingMiddleware
 
 log_config = LogConfig()

@@ -40,12 +40,12 @@ class OTPRepo:
     async def create_obj(self, session: Session, p_model: OTPCreate) -> OTPModel:
         """create otp entity in db"""
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
-        logger.info("db_model : %s", db_model)
+        logger.debug("db_model : %s", db_model)
         session.add(db_model)
         session.flush()
         session.refresh(db_model)
         p_resp = OTPModel.model_validate(db_model)
-        logger.info("[response]-[%s]", p_resp.model_dump())
+        logger.debug("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
     async def update_obj(
@@ -75,19 +75,19 @@ class OTPRepo:
 
         if db_model:
             # The record exists, so update it
-            logger.info("Updating existing db_model")
+            logger.debug("Updating existing db_model")
             for key, value in p_model.model_dump(exclude=["id"], by_alias=True).items():
                 setattr(db_model, key, value)
         else:
             # The record does not exist, create a new one
-            logger.info("Creating new db_model")
+            logger.debug("Creating new db_model")
             db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
             session.add(db_model)
 
         session.flush()
         session.refresh(db_model)
         p_resp = OTPModel.model_validate(db_model)
-        logger.info("[response]-[%s]", p_resp.model_dump())
+        logger.debug("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
     async def delete_obj(self, session: Session, obj_id: UUID) -> None:
@@ -123,7 +123,7 @@ class OTPRepo:
         result = session.execute(delete_stmt)
         session.flush()
 
-        logger.info("Rows deleted: %s", result.rowcount)
+        logger.debug("Rows deleted: %s", result.rowcount)
         return OTPModel.model_validate(db_model)
 
     async def delete_obj_by_filter(

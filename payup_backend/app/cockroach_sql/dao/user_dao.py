@@ -22,7 +22,7 @@ class UserRepo:
     def __init__(self):
         self._schema = UserSchema
 
-    def get_objs(
+    async def get_objs(
         self, session: Session, skip: int = 0, limit: int = 100
     ) -> list[UserModel]:
         """get users list, paginated"""
@@ -30,13 +30,13 @@ class UserRepo:
         db_models = session.execute(stmt).scalars().all()
         return [UserModel.model_validate(db_model) for db_model in db_models]
 
-    def get_obj(self, session: Session, obj_id: UUID):
+    async def get_obj(self, session: Session, obj_id: UUID):
         """get user by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
         db_model = session.execute(stmt).scalars().first()
         return UserModel.model_validate(db_model)
 
-    def create_obj(self, session: Session, p_model: UserCreate) -> UserModel:
+    async def create_obj(self, session: Session, p_model: UserCreate) -> UserModel:
         """create user entity in db"""
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
@@ -47,7 +47,9 @@ class UserRepo:
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
-    def update_obj(self, session: Session, obj_id: UUID, p_model: UserUpdate) -> None:
+    async def update_obj(
+        self, session: Session, obj_id: UUID, p_model: UserUpdate
+    ) -> None:
         """update user gives its primary key and update model"""
         stmt = (
             update(self._schema)
@@ -61,14 +63,14 @@ class UserRepo:
         logger.info("Rows updated: %s", result.rowcount)
         result.close()
 
-    def delete_obj(self, session: Session, obj_id: UUID) -> None:
+    async def delete_obj(self, session: Session, obj_id: UUID) -> None:
         """deletes user entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
         result = session.execute(stmt)
         session.flush()
         logger.info("Rows updated: %s", result.rowcount)
 
-    def get_obj_by_filter(
+    async def get_obj_by_filter(
         self, session: Session, col_filters: list[tuple[Column, Any]]
     ):
         """filter user table for list"""

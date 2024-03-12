@@ -71,7 +71,7 @@ class PhoneRepo:
         )
 
         # Log the raw SQL statement
-        logger.info(compiled_stmt)
+        logger.debug(compiled_stmt)
         db_model = session.execute(stmt).scalars().first()
         if db_model is None:
             raise NotFoundError(

@@ -21,14 +21,13 @@ ALGORITHM = "HS256"
 ISSUER = "auth@payup.turtlebyte"
 AUDIENCE = ["client@payup.turtlebyte", "localhost"]
 ACCESS_TOKEN_DURATION = 24 * 60  # in minutes
-REFRESH_TOKEN_DURATION = 6 * 30 * 24 * 60  # in minutes
+REFRESH_TOKEN_DURATION = 30 * 24 * 60  # in minutes
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 class UserClaim(BaseModel):
     profile_id: UUID
-    user_id: UUID
     first_name: Optional[str]
     last_name: Optional[str]
     email: Optional[str]
@@ -37,20 +36,20 @@ class UserClaim(BaseModel):
 
 class UserAccessClaim(UserClaim):
     iss: str
-    sub: str
+    sub: UUID  # user's profile_id
     aud: list[str]
     exp: int
     iat: int
-    jti: str
+    jti: UUID
 
 
 class UserRefreshClaim(UserClaim):
     iss: str
-    sub: str
+    sub: UUID  # user's profile_id
     aud: list[str]
     exp: int
     iat: int
-    jti: str
+    jti: UUID
     token_family: UUID
 
 

@@ -25,7 +25,7 @@ class OTPUpdate(OTPBase):
     """otp update model to pass to dao"""
 
     m_otp: int
-    expires_at: datetime = datetime.now()
+    expires_at: datetime
 
 
 class OTPCreate(OTPUpdate):
@@ -40,6 +40,69 @@ class OTP(OTPBase):
     id: UUID4
     m_otp: int
     expires_at: datetime
+
+
+class RefreshTokenBase(BaseModel):
+    """minimum refresh_token information"""
+
+    model_config = ConfigDict(
+        from_attributes=True, revalidate_instances="always", validate_assignment=True
+    )
+
+
+class RefreshTokenUpdate(RefreshTokenBase):
+    """refresh_token update model to pass to dao"""
+
+    jti: UUID4
+    expires_on: datetime
+
+
+class RefreshTokenCreate(RefreshTokenUpdate):
+    """refresh_token create model to be passed to refresh_token_dao
+    id will be token_family
+    """
+
+    user_id: UUID4
+
+
+class RefreshToken(RefreshTokenBase):
+    """refresh_token model returned from refresh_token_dao"""
+
+    id: UUID4
+    jti: UUID4
+    user_id: UUID4
+    expires_on: datetime
+    updated_at: datetime
+
+
+class AccessTokenBlacklistBase(BaseModel):
+    """minimum access_token_blacklist information"""
+
+    model_config = ConfigDict(
+        from_attributes=True, revalidate_instances="always", validate_assignment=True
+    )
+    id: UUID4
+
+
+class AccessTokenBlacklistCreate(AccessTokenBlacklistBase):
+    """access_token_blacklist create model to be passed to access_token_blacklist_dao
+    id will be jti
+    """
+
+    expires_on: datetime
+
+
+class AccessTokenBlacklist(AccessTokenBlacklistBase):
+    """access_token_blacklist model returned from access_token_blacklist_dao"""
+
+    expires_on: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class TokenResponse(BaseModel):
+    refresh_token: Optional[str] = None
+    access_token: Optional[str] = None
 
 
 class Credential(BaseModel):
@@ -67,8 +130,11 @@ class OTPResponse(BaseResponse):
     """response on successful otp sent"""
 
 
-class OTPVerifyResponse(BaseResponse, Profile):
+class OTPVerifyResponse(BaseResponse):
     """response on successful otp sent"""
+
+    user_data: Profile
+    token_data: TokenResponse
 
 
 class OTPVerifyRequest(OTPRequestBase):
@@ -80,4 +146,5 @@ class OTPVerifyRequest(OTPRequestBase):
 
 
 class AuthResponse(BaseResponse):
-    user_data: Optional[UserModel] = None
+    user_data: Profile
+    token_data: TokenResponse

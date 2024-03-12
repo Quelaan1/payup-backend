@@ -1,11 +1,10 @@
 """Add your custom errors."""
 
-from ..models.py_models import BaseResponse
-
 
 class UnicornException(Exception):
+    """sample"""
 
-    def __init__(self, name: str, detail: BaseResponse):
+    def __init__(self, name: str, detail: any):
         self.name = name
         self.detail = detail
 
@@ -21,7 +20,7 @@ class DatabaseError(Exception):
 class ExternalServiceError(Exception):
     """Custom exception for external services errors."""
 
-    def __init__(self, name: str, detail: BaseResponse):
+    def __init__(self, name: str, detail: any):
         self.name = name
         self.detail = detail
 
@@ -29,6 +28,6 @@ class ExternalServiceError(Exception):
 class NotFoundError(Exception):
     """Custom exception for resource not found in database."""
 
-    def __init__(self, name: str, detail: BaseResponse):
+    def __init__(self, name: str, detail: any):
         self.name = name
         self.detail = detail
