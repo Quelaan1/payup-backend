@@ -21,14 +21,9 @@ class CustomExceptionHandler:
 
     @classmethod
     def http_exception_handler(cls, request: Request, exc: HTTPException):
-        errs = exc.args
-        logger.info("Http exception Error : %s", errs)
+        msg = exc.detail
+        logger.info("Http exception Error : %s", exc)
 
-        msg = ""
-        for db in errs:
-            msg = msg + str(db) + ", "
-        if msg == "":
-            msg = exc.detail
         detail = BaseResponse(message=msg).model_dump()
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=detail

@@ -12,9 +12,11 @@ from .model import (
     AuthResponse,
     # RegisterNumberRequestBase,
     Credential,
+    TokenBody,
 )
 from ..auth.service import AuthService
 from ..auth.token_service import TokenService
+from ...models.py_models import BaseResponse
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,13 @@ class AuthHandler:
             endpoint=self.login_endpoint,
             status_code=status.HTTP_200_OK,
             response_model=AuthResponse,
+            methods=["POST"],
+        )
+        self.router.add_api_route(
+            "/signout",
+            endpoint=self.signout_endpoint,
+            status_code=status.HTTP_200_OK,
+            response_model=BaseResponse,
             methods=["POST"],
         )
 
@@ -115,6 +124,12 @@ class AuthHandler:
         #     "access_token": create_access_token(user["email"]),
         #     "refresh_token": create_refresh_token(user["email"]),
         # }
+
+    async def signout_endpoint(self, token_data: TokenBody):
+        return await self.token_service.handle_signout(
+            access_token_string=token_data.access_token,
+            refresh_token_string=token_data.refresh_token,
+        )
 
 
 #     @app.post("/token")

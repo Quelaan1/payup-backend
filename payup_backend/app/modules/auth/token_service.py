@@ -1,22 +1,24 @@
 """layer between router and data access operations. handles db connection, commit, rollback and close."""
 
 import logging
+import pytz
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta
 
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
 from ...cockroach_sql.database import database
 from ...config.constants import get_settings
 from .model import (
-    TokenResponse,
+    TokenBody,
     RefreshTokenUpdate,
     RefreshTokenCreate,
     RefreshToken as RefreshTokenModel,
     AccessTokenBlacklistCreate,
 )
-
+from ...models.py_models import BaseResponse
 from ...config.errors import NotFoundError
 from ...dependency import authentication
 from ...cockroach_sql.dao.tokens_dao import RefreshTokenRepo, AccessTokenBlacklistRepo
@@ -48,7 +50,7 @@ class TokenService:
         self.user_repo = UserRepo()
         self.jwt_service = authentication.JWTAuth()
 
-    async def create_new_tokens(self, profile_id: UUID) -> TokenResponse:
+    async def create_new_tokens(self, profile_id: UUID) -> TokenBody:
         """crates a new refresh token"""
         try:
             rt_jti = uuid4()
@@ -74,15 +76,17 @@ class TokenService:
             return await self.get_token_strings(
                 profile_id=profile_id, rt_model=rt_model
             )
-
+        except HTTPException as err:
+            logger.error("error : %s", err)
+            raise err
         except Exception as err:
             logger.error("error : %s", err)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=err.args,
+                detail=str(err.args[0]),
             ) from err
 
-    async def refresh_tokens(self, refresh_token_string: str) -> TokenResponse:
+    async def refresh_tokens(self, refresh_token_string: str) -> TokenBody:
         """crates a new refresh token"""
         try:
             # put access token in its blacklist if expiry time remains
@@ -99,7 +103,7 @@ class TokenService:
             if not verified:
                 # delete all tokens for the user
                 logger.info("refresh token verification failed")
-                return TokenResponse(message="invalid token")
+                return TokenBody(message="invalid token")
 
             rt_jti = uuid4()
             now = datetime.utcnow()
@@ -139,7 +143,7 @@ class TokenService:
 
     async def get_token_strings(
         self, rt_model: RefreshTokenModel, profile_id: UUID
-    ) -> TokenResponse:
+    ) -> TokenBody:
         """crates a new refresh token"""
         try:
             at_jti = uuid4()
@@ -147,27 +151,30 @@ class TokenService:
             at_future_time = at_now + timedelta(
                 minutes=constants.JT.ACCESS_TOKEN_DURATION
             )
-
+            # int(exp_datetime.timestamp())
             refresh_token_claims = authentication.UserRefreshClaim(
                 aud=constants.JT.AUDIENCE,
-                exp=rt_model.expires_on,
-                iat=rt_model.updated_at,
+                exp=int(rt_model.expires_on.timestamp()),
+                iat=int(rt_model.updated_at.timestamp()),
                 iss=constants.JT.ISSUER,
-                sub=profile_id,
-                profile_id=profile_id,
-                jti=rt_model.jti,
-                token_family=rt_model.id,
+                sub=str(profile_id),
+                profile_id=str(profile_id),
+                jti=str(rt_model.jti),
+                token_family=str(rt_model.id),
             )
 
             access_token_claims = authentication.UserAccessClaim(
                 aud=constants.JT.AUDIENCE,
-                exp=at_future_time,
-                iat=at_now,
+                exp=int(at_future_time.timestamp()),
+                iat=int(at_now.timestamp()),
                 iss=constants.JT.ISSUER,
-                sub=profile_id,
-                profile_id=profile_id,
-                jti=at_jti,
+                sub=str(profile_id),
+                profile_id=str(profile_id),
+                jti=str(at_jti),
             )
+
+            logger.debug(refresh_token_claims.model_dump())
+            logger.debug(access_token_claims.model_dump())
 
             refresh_token_string = self.jwt_service.encode(
                 claims=refresh_token_claims.model_dump()
@@ -176,14 +183,14 @@ class TokenService:
             access_token_string = self.jwt_service.encode(
                 claims=access_token_claims.model_dump()
             )
-            return TokenResponse(
+            return TokenBody(
                 access_token=access_token_string, refresh_token=refresh_token_string
             )
         except Exception as err:
             logger.error("error : %s", err)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=err.args,
+                detail=err.args[0],
             ) from err
 
     async def handle_signout(self, refresh_token_string: str, access_token_string: str):
@@ -212,21 +219,32 @@ class TokenService:
                     session=session, profile_id=rt_claims_model.profile_id
                 )
 
-                at_model = await self.access_token_repo.create_obj(
-                    session=session,
-                    p_model=AccessTokenBlacklistCreate(
-                        id=at_claims_model.jti, expires_on=at_claims_model.exp
-                    ),
-                )
+                try:
+                    at_model = await self.access_token_repo.create_obj(
+                        session=session,
+                        p_model=AccessTokenBlacklistCreate(
+                            id=at_claims_model.jti,
+                            expires_on=datetime.fromtimestamp(
+                                at_claims_model.exp, tz=pytz.utc
+                            ),
+                        ),
+                    )
+                    session.commit()
+                    logger.debug("access token blacklisted : %s", at_model)
+                except IntegrityError as e:
+                    if "unique constraint" in str(e.orig).lower():
+                        logger.info(
+                            "Token already blacklisted: %s", at_claims_model.jti
+                        )
+                        return BaseResponse(message="Already signed out.")
+                    raise  # Re-raise if it's not the specific error we're catching
 
-                session.commit()
-            logger.debug("access token blacklisted : %s", at_model)
-            return
+            return BaseResponse(message="Already signed out.")
         except NotFoundError as err:
             raise NotFoundError from err
         except Exception as err:
             logger.error("error : %s", err)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=err.args,
+                detail=err.args[0],
             ) from err

@@ -27,30 +27,30 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 class UserClaim(BaseModel):
-    profile_id: UUID
-    first_name: Optional[str]
-    last_name: Optional[str]
-    email: Optional[str]
-    browser_info: Optional[str]
+    profile_id: str
+    # first_name: Optional[str]
+    # last_name: Optional[str]
+    # email: Optional[str]
+    # browser_info: Optional[str]
 
 
 class UserAccessClaim(UserClaim):
     iss: str
-    sub: UUID  # user's profile_id
+    sub: str  # user's profile_id
     aud: list[str]
     exp: int
     iat: int
-    jti: UUID
+    jti: str
 
 
 class UserRefreshClaim(UserClaim):
     iss: str
-    sub: UUID  # user's profile_id
+    sub: str  # user's profile_id
     aud: list[str]
     exp: int
     iat: int
-    jti: UUID
-    token_family: UUID
+    jti: str
+    token_family: str
 
 
 class JwtTokenResponse(BaseModel):

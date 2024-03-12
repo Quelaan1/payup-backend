@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS dev_schema.refresh_token_entities (
     expires_on TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(), 
-    user_id UUID REFERENCES REFERENCES dev_schema.users(id) ON DELETE CASCADE
+    user_id UUID REFERENCES dev_schema.users(id) ON DELETE CASCADE
 ) WITH (ttl_expiration_expression = 'expires_on');
 
 -- Create the 'access_token_blacklists' table  with ttl

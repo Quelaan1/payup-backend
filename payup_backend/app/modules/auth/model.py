@@ -100,7 +100,7 @@ class AccessTokenBlacklist(AccessTokenBlacklistBase):
     updated_at: datetime
 
 
-class TokenResponse(BaseModel):
+class TokenBody(BaseModel):
     refresh_token: Optional[str] = None
     access_token: Optional[str] = None
 
@@ -134,7 +134,7 @@ class OTPVerifyResponse(BaseResponse):
     """response on successful otp sent"""
 
     user_data: Profile
-    token_data: TokenResponse
+    token_data: TokenBody
 
 
 class OTPVerifyRequest(OTPRequestBase):
@@ -147,4 +147,4 @@ class OTPVerifyRequest(OTPRequestBase):
 
 class AuthResponse(BaseResponse):
     user_data: Profile
-    token_data: TokenResponse
+    token_data: TokenBody
