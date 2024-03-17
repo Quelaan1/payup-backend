@@ -5,10 +5,11 @@ from pydantic import UUID4
 from typing import Optional
 from sqlalchemy_cockroachdb import run_transaction
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...cockroach_sql.dao.user_dao import UserRepo
 from .model import UserCreate
-from ...cockroach_sql.database import database, PoolConnection
+from ...cockroach_sql.database import database
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,9 +31,10 @@ class UserService:
             conn_string {String} -- CockroachDB connection string.
         """
         self.engine = database.engine
-        self.connect = PoolConnection()
+        self.sessionmaker = sessionmaker(
+            bind=self.engine, class_=AsyncSession, expire_on_commit=False
+        )
 
-        self.sessionmaker = sessionmaker(bind=self.engine)
         self._repo = UserRepo()
 
     async def create_user(self, req_body: UserCreate):

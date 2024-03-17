@@ -3,7 +3,7 @@
 import logging
 from uuid import UUID
 from typing import Any, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, Column
 from sqlalchemy.dialects import postgresql
 
@@ -33,21 +33,21 @@ class RefreshTokenRepo:
         self._schema = RefreshTokenSchema
 
     async def get_objs(
-        self, session: Session, skip: int = 0, limit: int = 100
+        self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[RefreshTokenModel]:
         """get refresh_token_entities list, paginated"""
         stmt = select(self._schema).offset(skip).limit(limit)
         db_models = session.execute(stmt).scalars().all()
         return [RefreshTokenModel.model_validate(db_model) for db_model in db_models]
 
-    async def get_obj(self, session: Session, obj_id: UUID):
+    async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get refresh_token_entitie by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
         db_model = session.execute(stmt).scalars().first()
         return RefreshTokenModel.model_validate(db_model)
 
     async def create_obj(
-        self, session: Session, p_model: RefreshTokenCreate
+        self, session: AsyncSession, p_model: RefreshTokenCreate
     ) -> RefreshTokenModel:
         """create refresh_token_entitie entity in db"""
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
@@ -61,7 +61,7 @@ class RefreshTokenRepo:
 
     async def update_obj(
         self,
-        session: Session,
+        session: AsyncSession,
         obj_id: UUID,
         p_model: RefreshTokenUpdate,
         col_filters: Optional[list[tuple[Column, Any]]] = None,
@@ -97,7 +97,7 @@ class RefreshTokenRepo:
         return db_model
 
     async def update_or_create_obj(
-        self, session: Session, p_model: RefreshTokenCreate
+        self, session: AsyncSession, p_model: RefreshTokenCreate
     ) -> RefreshTokenModel:
         """Create or update refresh_token_entitie entity in db."""
         unique_identifier = (
@@ -118,7 +118,7 @@ class RefreshTokenRepo:
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
-    async def delete_obj(self, session: Session, obj_id: UUID) -> None:
+    async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes refresh_token_entitie entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
         result = session.execute(stmt)
@@ -126,7 +126,7 @@ class RefreshTokenRepo:
         logger.info("Rows deleted: %s", result.rowcount)
 
     async def delete_obj_by_filter(
-        self, session: Session, col_filters: list[tuple[Column, Any]]
+        self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """Attempts to delete an refresh_token_entitie entity from db and returns the deleted object if successful."""
         # Build a delete statement based on the same filters
@@ -142,7 +142,7 @@ class RefreshTokenRepo:
 
     async def delete_obj_related_by_profile(
         self,
-        session: Session,
+        session: AsyncSession,
         profile_id: UUID,
         col_filters: Optional[list[tuple[Column, Any]]] = None,
     ):
@@ -166,7 +166,7 @@ class RefreshTokenRepo:
         print(f"Deleted {result.rowcount} rows.")
 
     async def get_obj_by_filter(
-        self, session: Session, col_filters: list[tuple[Column, Any]]
+        self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """filter refresh_token_entitie table for list"""
         stmt = select(self._schema)
@@ -183,7 +183,7 @@ class AccessTokenBlacklistRepo:
         self._schema = AccessTokenBlacklistSchema
 
     async def get_objs(
-        self, session: Session, skip: int = 0, limit: int = 100
+        self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[AccessTokenBlacklistModel]:
         """get access_token_blacklists list, paginated"""
         stmt = select(self._schema).offset(skip).limit(limit)
@@ -192,7 +192,7 @@ class AccessTokenBlacklistRepo:
             AccessTokenBlacklistModel.model_validate(db_model) for db_model in db_models
         ]
 
-    async def get_obj(self, session: Session, obj_id: UUID):
+    async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get access_token_blacklist by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
         db_model = session.execute(stmt).scalars().first()
@@ -203,7 +203,7 @@ class AccessTokenBlacklistRepo:
         )
 
     async def create_obj(
-        self, session: Session, p_model: AccessTokenBlacklistCreate
+        self, session: AsyncSession, p_model: AccessTokenBlacklistCreate
     ) -> AccessTokenBlacklistModel:
         """create access_token_blacklist entity in db"""
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))

@@ -3,7 +3,7 @@
 import logging
 from uuid import UUID
 from typing import Any
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, Column
 
 from ...modules.auth.model import OTPCreate, OTPUpdate, OTP as OTPModel
@@ -24,20 +24,20 @@ class OTPRepo:
         self._schema = OTPSchema
 
     async def get_objs(
-        self, session: Session, skip: int = 0, limit: int = 100
+        self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[OTPModel]:
         """get otps list, paginated"""
         stmt = select(self._schema).offset(skip).limit(limit)
         db_models = session.execute(stmt).scalars().all()
         return [OTPModel.model_validate(db_model) for db_model in db_models]
 
-    async def get_obj(self, session: Session, obj_id: UUID):
+    async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get otp by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
         db_model = session.execute(stmt).scalars().first()
         return OTPModel.model_validate(db_model)
 
-    async def create_obj(self, session: Session, p_model: OTPCreate) -> OTPModel:
+    async def create_obj(self, session: AsyncSession, p_model: OTPCreate) -> OTPModel:
         """create otp entity in db"""
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.debug("db_model : %s", db_model)
@@ -49,7 +49,7 @@ class OTPRepo:
         return p_resp
 
     async def update_obj(
-        self, session: Session, obj_id: UUID, p_model: OTPUpdate
+        self, session: AsyncSession, obj_id: UUID, p_model: OTPUpdate
     ) -> None:
         """update otp gives its primary key and update model"""
         stmt = (
@@ -65,7 +65,7 @@ class OTPRepo:
         result.close()
 
     async def update_or_create_obj(
-        self, session: Session, p_model: OTPCreate
+        self, session: AsyncSession, p_model: OTPCreate
     ) -> OTPModel:
         """Create or update otp entity in db."""
         unique_identifier = (
@@ -90,7 +90,7 @@ class OTPRepo:
         logger.debug("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
-    async def delete_obj(self, session: Session, obj_id: UUID) -> None:
+    async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes otp entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
         result = session.execute(stmt)
@@ -98,7 +98,10 @@ class OTPRepo:
         logger.info("Rows deleted: %s", result.rowcount)
 
     async def delete_obj_related_by_number(
-        self, session: Session, phone_number: str, col_filters: list[tuple[Column, Any]]
+        self,
+        session: AsyncSession,
+        phone_number: str,
+        col_filters: list[tuple[Column, Any]],
     ):
         """Attempts to delete an otp entity from db and returns the deleted object if successful."""
         # Fetch and delete in a single transaction
@@ -127,7 +130,7 @@ class OTPRepo:
         return OTPModel.model_validate(db_model)
 
     async def delete_obj_by_filter(
-        self, session: Session, col_filters: list[tuple[Column, Any]]
+        self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """Attempts to delete an otp entity from db and returns the deleted object if successful."""
         # Fetch and delete in a single transaction
@@ -149,7 +152,7 @@ class OTPRepo:
         logger.info("Rows deleted: %s", result.rowcount)
 
     async def get_obj_by_filter(
-        self, session: Session, col_filters: list[tuple[Column, Any]]
+        self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """filter otp table for list"""
         stmt = select(self._schema)
@@ -158,7 +161,7 @@ class OTPRepo:
         db_models = session.execute(stmt).scalars().all()
         return [OTPModel.model_validate(db_model) for db_model in db_models]
 
-    async def get_otp_by_phone(self, session: Session, phone_number: str):
+    async def get_otp_by_phone(self, session: AsyncSession, phone_number: str):
         """filter otp table for list"""
         stmt = select(self._schema)
         stmt = stmt.join_from(

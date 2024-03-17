@@ -2,9 +2,9 @@
 
 import logging
 import random
-from uuid import UUID
 from datetime import datetime, timedelta
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from .model import OTPCreate, OTPResponse
@@ -17,15 +17,14 @@ from ...config.constants import get_settings
 from ...helperClass.verifications.phone.twilio import TwilioService
 from ...cockroach_sql.schemas import PhoneEntity
 from ...cockroach_sql.db_enums import UserType
+from ..user.service import UserService
+from .model import OTPCreate, OTPResponse
+from ..user.model import UserCreate
 from ...cockroach_sql.dao.phone_dao import PhoneRepo
 from ...cockroach_sql.dao.otp_dao import OTPRepo
 from ...cockroach_sql.dao.profile_dao import ProfileRepo
 from ...cockroach_sql.dao.user_dao import UserRepo
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(lineno)d | %(filename)s : %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 constants = get_settings()
@@ -44,7 +43,9 @@ class AuthService:
             conn_string {String} -- CockroachDB connection string.
         """
         self.engine = database.engine
-        self.sessionmaker = sessionmaker(bind=self.engine)
+        self.sessionmaker = sessionmaker(
+            bind=self.engine, class_=AsyncSession, expire_on_commit=False
+        )
 
         self.phone_repo = PhoneRepo()
         self.user_repo = UserRepo()
@@ -62,14 +63,13 @@ class AuthService:
             future_time = now + timedelta(minutes=30)
             otp_new = random.randint(100000, 999999)
 
-            with self.sessionmaker() as session:
+            async with self.sessionmaker() as session:
                 # query for phone number if already exist get if, else create phone entity in db
-                db_phone_models = self.phone_repo.get_obj_by_filter(
+                db_phone_models = await self.phone_repo.get_obj_by_filter(
                     session=session, col_filters=[(PhoneEntity.m_number, phone_number)]
                 )
-                logger.debug(db_phone_models)
                 if len(db_phone_models) == 0:
-                    db_phone = self.create_profile_txn(
+                    db_phone = await self.create_profile_txn(
                         phone_number=phone_number, session=session
                     )
                 else:
@@ -83,6 +83,8 @@ class AuthService:
                         expires_at=future_time,
                     ),
                 )
+                logger.debug(db_otp_model)
+
                 session.commit()
 
             logger.debug(db_otp_model.model_dump())
@@ -180,7 +182,7 @@ class AuthService:
     #         )
     #         return True
 
-    def create_profile_txn(self, phone_number: str, session: Session):
+    async def create_profile_txn(self, phone_number: str, session: AsyncSession):
 
         # create a profile entity
         # create a user entity

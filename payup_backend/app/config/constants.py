@@ -1,8 +1,8 @@
 """loads environment constants in code"""
 
-from typing import Any, Optional, Union
-from pydantic import Field, model_validator
 from functools import lru_cache
+from typing import Any, Union
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

@@ -5,24 +5,17 @@ from uuid import UUID
 
 from sqlalchemy_cockroachdb import run_transaction
 from sqlalchemy.orm import sessionmaker
-
-# from sqlalchemy.dialects import registry
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .dao import ItemRepo
 from .model import ItemCreate
-from ...cockroach_sql.database import database, PoolConnection
+from ...cockroach_sql.database import database
 
 # to be called from router
 # get pydantic-vallidated model for request-body as p_model parameter.
 # call dao functions inside a connection context
 # return response data pydantic model or exception
 
-
-# registry.register("cockroachdb", "cockroachdb.sqlalchemy.dialect", "CockroachDBDialect")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(lineno)d | %(filename)s : %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 
@@ -39,9 +32,10 @@ class ItemService:
             conn_string {String} -- CockroachDB connection string.
         """
         self.engine = database.engine
-        self.connect = PoolConnection()
 
-        self.sessionmaker = sessionmaker(bind=self.connect)
+        self.sessionmaker = sessionmaker(
+            bind=self.engine, class_=AsyncSession, expire_on_commit=False
+        )
         self.item_repo = ItemRepo()
 
     def create_item(self, req_body: ItemCreate, user_id: UUID):
