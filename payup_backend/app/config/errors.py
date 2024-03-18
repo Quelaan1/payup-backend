@@ -1,10 +1,10 @@
 """Add your custom errors."""
 
 
-class UnicornException(Exception):
+class TokenException(Exception):
     """sample"""
 
-    def __init__(self, name: str, detail: any):
+    def __init__(self, detail: any, name: str = "token"):
         self.name = name
         self.detail = detail
 

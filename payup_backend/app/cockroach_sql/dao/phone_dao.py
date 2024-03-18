@@ -12,10 +12,6 @@ from ..schemas import PhoneEntity as PhoneSchema
 from ...config.errors import NotFoundError
 from ...models.py_models import BaseResponse
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(lineno)d | %(filename)s : %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 
@@ -30,13 +26,15 @@ class PhoneRepo:
     ) -> list[PhoneModel]:
         """get phones list, paginated"""
         stmt = select(self._schema).offset(skip).limit(limit)
-        db_models = await session.execute(stmt).scalars().all()
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [PhoneModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get phone by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
-        db_model = await session.execute(stmt).scalars().first()
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
         return PhoneModel.model_validate(db_model)
 
     async def create_obj(
@@ -48,10 +46,9 @@ class PhoneRepo:
             db_model.set_password(p_model.m_pin.get_secret_value())
         logger.debug("db_model : %s", db_model)
         session.add(db_model)
-        session.flush()
+        await session.flush()
         session.refresh(db_model)
         p_resp = PhoneModel.model_validate(db_model)
-        logger.debug("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
     async def update_obj(
@@ -64,17 +61,11 @@ class PhoneRepo:
         """update phone given its primary key and update model"""
         # db_model = session.get(self._schema, obj_id)
         stmt = select(self._schema).where(self._schema.id == obj_id)
-        if col_filters is not None:
+        if not col_filters is None:
             for col, val in col_filters:
                 stmt = stmt.where(col == val)
-        # Compile the statement to a string of raw SQL
-        compiled_stmt = stmt.compile(
-            dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
-        )
-
-        # Log the raw SQL statement
-        logger.debug(compiled_stmt)
-        db_model = session.execute(stmt).scalars().first()
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
         if db_model is None:
             raise NotFoundError(
                 name=__name__, detail=BaseResponse(detail="Phone not found")
@@ -90,17 +81,16 @@ class PhoneRepo:
             )
 
         session.add(db_model)
-        session.flush()
+        await session.flush()
         session.refresh(db_model)
-
-        logger.debug("Phone updated: %s", db_model.id)
+        logger.debug("otp didn't matched %s", db_model.id)
         return db_model
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes phone entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
-        result = session.execute(stmt)
-        session.flush()
+        result = await session.execute(stmt)
+        await session.flush()
         logger.info("Rows updated: %s", result.rowcount)
 
     async def get_obj_by_filter(
@@ -110,13 +100,13 @@ class PhoneRepo:
         stmt = select(self._schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
-        # Compile the statement to a string of raw SQL
-        compiled_stmt = stmt.compile(
-            dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
-        )
-
-        # Log the raw SQL statement
-        logger.info(compiled_stmt)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [PhoneModel.model_validate(db_model) for db_model in db_models]
+        # Compile the statement to a string of raw SQL
+        # compiled_stmt = stmt.compile(
+        #     dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+        # )
+
+        # # Log the raw SQL statement
+        # logger.info(compiled_stmt)

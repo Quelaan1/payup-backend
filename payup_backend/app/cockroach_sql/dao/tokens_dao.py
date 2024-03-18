@@ -4,7 +4,7 @@ import logging
 from uuid import UUID
 from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, Column
+from sqlalchemy import select, delete, Column
 from sqlalchemy.dialects import postgresql
 
 from ...modules.token.model import (
@@ -37,13 +37,15 @@ class RefreshTokenRepo:
     ) -> list[RefreshTokenModel]:
         """get refresh_token_entities list, paginated"""
         stmt = select(self._schema).offset(skip).limit(limit)
-        db_models = session.execute(stmt).scalars().all()
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [RefreshTokenModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get refresh_token_entitie by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
-        db_model = session.execute(stmt).scalars().first()
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
         return RefreshTokenModel.model_validate(db_model)
 
     async def create_obj(
@@ -53,8 +55,8 @@ class RefreshTokenRepo:
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
-        session.flush()
-        session.refresh(db_model)
+        await session.flush()
+        await session.refresh(db_model)
         p_resp = RefreshTokenModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp
@@ -79,7 +81,8 @@ class RefreshTokenRepo:
 
         # Log the raw SQL statement
         logger.debug(compiled_stmt)
-        db_model = session.execute(stmt).scalars().first()
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
         if db_model is None:
             raise NotFoundError(
                 name=__name__, detail=BaseResponse(detail="RefreshToken not found")
@@ -90,8 +93,8 @@ class RefreshTokenRepo:
             setattr(db_model, key, value)
 
         session.add(db_model)
-        session.flush()
-        session.refresh(db_model)
+        await session.flush()
+        await session.refresh(db_model)
 
         logger.debug("RefreshToken updated: %s", db_model.id)
         return db_model
@@ -103,7 +106,10 @@ class RefreshTokenRepo:
         unique_identifier = (
             p_model.id
         )  # Replace `unique_field` with the actual field name used to identify uniqueness
-        db_model = session.query(self._schema).filter_by(id=unique_identifier).first()
+        result = await session.execute(
+            select(self._schema).filter_by(id=unique_identifier)
+        )
+        db_model = result.scalars().first()
 
         if db_model:
             for key, value in p_model.model_dump(exclude=["id"], by_alias=True).items():
@@ -112,8 +118,8 @@ class RefreshTokenRepo:
             db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
             session.add(db_model)
 
-        session.flush()
-        session.refresh(db_model)
+        await session.flush()
+        await session.refresh(db_model)
         p_resp = RefreshTokenModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp
@@ -121,9 +127,10 @@ class RefreshTokenRepo:
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes refresh_token_entitie entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
-        result = session.execute(stmt)
-        session.refresh()
+        result = await session.execute(stmt)
+        await session.refresh()
         logger.info("Rows deleted: %s", result.rowcount)
+        result.close()
 
     async def delete_obj_by_filter(
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
@@ -135,10 +142,9 @@ class RefreshTokenRepo:
             delete_stmt = delete_stmt.where(col == val)
 
         # Execute the delete operation and get the result
-        result = session.execute(delete_stmt)
-
-        # Log the number of rows deleted
+        result = await session.execute(delete_stmt)
         logger.info("Rows deleted: %s", result.rowcount)
+        result.close()
 
     async def delete_obj_related_by_profile(
         self,
@@ -160,10 +166,9 @@ class RefreshTokenRepo:
                 delete_stmt = delete_stmt.where(col == val)
 
         # Execute the delete statement in a single call
-        result = session.execute(delete_stmt)
-
-        # Print the number of rows deleted
-        print(f"Deleted {result.rowcount} rows.")
+        result = await session.execute(delete_stmt)
+        logger.debug("Deleted %s rows.", result.rowcount)
+        result.close()
 
     async def get_obj_by_filter(
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
@@ -172,7 +177,8 @@ class RefreshTokenRepo:
         stmt = select(self._schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
-        db_models = session.execute(stmt).scalars().all()
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [RefreshTokenModel.model_validate(db_model) for db_model in db_models]
 
 
@@ -187,7 +193,8 @@ class AccessTokenBlacklistRepo:
     ) -> list[AccessTokenBlacklistModel]:
         """get access_token_blacklists list, paginated"""
         stmt = select(self._schema).offset(skip).limit(limit)
-        db_models = session.execute(stmt).scalars().all()
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [
             AccessTokenBlacklistModel.model_validate(db_model) for db_model in db_models
         ]
@@ -195,12 +202,9 @@ class AccessTokenBlacklistRepo:
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get access_token_blacklist by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
-        db_model = session.execute(stmt).scalars().first()
-        return (
-            AccessTokenBlacklistModel.model_validate(db_model)
-            if db_model is not None
-            else None
-        )
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
+        return AccessTokenBlacklistModel.model_validate(db_model)
 
     async def create_obj(
         self, session: AsyncSession, p_model: AccessTokenBlacklistCreate
@@ -209,8 +213,8 @@ class AccessTokenBlacklistRepo:
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
-        session.flush()
-        session.refresh(db_model)
+        await session.flush()
+        await session.refresh(db_model)
         p_resp = AccessTokenBlacklistModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp

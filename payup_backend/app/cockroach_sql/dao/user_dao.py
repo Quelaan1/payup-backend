@@ -24,13 +24,15 @@ class UserRepo:
     ) -> list[UserModel]:
         """get users list, paginated"""
         stmt = select(self._schema).offset(skip).limit(limit)
-        db_models = session.execute(stmt).scalars().all()
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [UserModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get user by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
-        db_model = session.execute(stmt).scalars().first()
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
         return UserModel.model_validate(db_model)
 
     async def create_obj(self, session: AsyncSession, p_model: UserCreate) -> UserModel:
@@ -38,8 +40,8 @@ class UserRepo:
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
-        session.flush()
-        session.refresh(db_model)
+        await session.flush()
+        await session.refresh(db_model)
         p_resp = UserModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp
@@ -54,18 +56,18 @@ class UserRepo:
             .values(**p_model.model_dump(exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
-        result = session.execute(stmt)
-        session.flush()
-
+        result = await session.execute(stmt)
+        await session.flush()
         logger.info("Rows updated: %s", result.rowcount)
         result.close()
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes user entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
-        result = session.execute(stmt)
-        session.flush()
+        result = await session.execute(stmt)
+        await session.flush()
         logger.info("Rows updated: %s", result.rowcount)
+        result.close()
 
     async def get_obj_by_filter(
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
@@ -74,7 +76,8 @@ class UserRepo:
         stmt = select(self._schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
-        db_models = session.execute(stmt).scalars().all()
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [UserModel.model_validate(db_model) for db_model in db_models]
 
     # def get_user_txn(self, session: AsyncSession, phone_number: str):

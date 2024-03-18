@@ -93,7 +93,8 @@ class AuthHandler:
         token_data = await self.token_service.create_new_tokens(
             profile_id=profile_data.id
         )
-        return AuthResponse(token_data=token_data, user_data=profile_data)
+        # return AuthResponse(token_data=token_data, user_data=profile_data)
+        return AuthResponse.model_validate(token_data)
 
     async def set_pin_endpoint(self, data: Credential):
         # querying database to check if phone already exist

@@ -1,6 +1,7 @@
 """Sqlalchemy model for cockroach db tables"""
 
 import uuid
+import pytz
 from datetime import datetime
 
 from sqlalchemy import (
@@ -22,8 +23,12 @@ from ..config.constants import get_settings
 
 # Define the base class
 class Base(object):
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(pytz.UTC).replace(tzinfo=None))
+    updated_at = Column(
+        DateTime,
+        default=datetime.now(pytz.UTC).replace(tzinfo=None),
+        onupdate=datetime.now(pytz.UTC).replace(tzinfo=None),
+    )
 
 
 # Create the declarative base class

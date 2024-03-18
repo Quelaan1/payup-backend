@@ -2,7 +2,7 @@
 
 import logging
 from uuid import UUID
-from typing import Any
+from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, Column
 
@@ -13,6 +13,8 @@ from ...modules.profile.model import (
 )
 from ..schemas import Profile as ProfileSchema, User as UserSchema
 from ...config.errors import DatabaseError
+from ...config.errors import NotFoundError
+from ...models.py_models import BaseResponse
 
 logger = logging.getLogger(__name__)
 
@@ -28,13 +30,15 @@ class ProfileRepo:
     ) -> list[ProfileModel]:
         """get profiles list, paginated"""
         stmt = select(self._schema).offset(skip).limit(limit)
-        db_models = session.execute(stmt).scalars().all()
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [ProfileModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get profile by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
-        db_model = session.execute(stmt).scalars().first()
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
         return ProfileModel.model_validate(db_model)
 
     async def create_obj(
@@ -44,33 +48,46 @@ class ProfileRepo:
         db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
-        session.flush()
-        session.refresh(db_model)
+        await session.flush()
+        await session.refresh(db_model)
         p_resp = ProfileModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
         return p_resp
 
     async def update_obj(
-        self, session: AsyncSession, obj_id: UUID, p_model: ProfileUpdate
-    ) -> None:
+        self,
+        session: AsyncSession,
+        obj_id: UUID,
+        p_model: ProfileUpdate,
+        col_filters: Optional[list[tuple[Column, Any]]] = None,
+    ):
         """update profile gives its primary key and update model"""
-        stmt = (
-            update(self._schema)
-            .where(self._schema.id == obj_id)
-            .values(**p_model.model_dump(exclude_unset=True))
-            .execution_options(synchronize_session="fetch")
-        )
-        result = session.execute(stmt)
-        session.flush()
+        # db_model = session.get(self._schema, obj_id)
+        stmt = select(self._schema).where(self._schema.id == obj_id)
+        if not col_filters is None:
+            for col, val in col_filters:
+                stmt = stmt.where(col == val)
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
+        if db_model is None:
+            raise NotFoundError(
+                name=__name__, detail=BaseResponse(message=f"{__name__} not found")
+            )
 
-        logger.info("Rows updated: %s", result.rowcount)
-        result.close()
+        update_data = p_model.model_dump(exclude=[""], exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_model, key, value)
+
+        session.add(db_model)
+        await session.flush()
+        session.refresh(db_model)
+        return db_model
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes profile entity from db"""
         stmt = delete(self._schema).where(self._schema.id == obj_id)
         result = session.execute(stmt)
-        session.flush()
+        await session.flush()
         logger.info("Rows updated: %s", result.rowcount)
 
     async def get_obj_by_filter(
@@ -80,7 +97,8 @@ class ProfileRepo:
         stmt = select(self._schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
-        db_models = session.execute(stmt).scalars().all()
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [ProfileModel.model_validate(db_model) for db_model in db_models]
 
     async def get_profile_by_user(self, session: AsyncSession, user_id: UUID):
@@ -106,7 +124,8 @@ class ProfileRepo:
             )
             .where(UserSchema.id == user_id)
         )
-        db_model = session.execute(stmt).scalars().first()
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
         if db_model:
             return ProfileModel.model_validate(db_model)
         raise DatabaseError(

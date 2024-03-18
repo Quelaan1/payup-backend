@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
+import pytz
 
 from .model import OTPCreate, OTPResponse
 from ..user.service import UserService
@@ -24,6 +25,9 @@ from ...cockroach_sql.dao.phone_dao import PhoneRepo
 from ...cockroach_sql.dao.otp_dao import OTPRepo
 from ...cockroach_sql.dao.profile_dao import ProfileRepo
 from ...cockroach_sql.dao.user_dao import UserRepo
+from ..profile.model import ProfileCreate, Profile as ProfileModel
+from ..phone.model import PhoneCreate, Phone as PhoneModel, PhoneUpdate
+from ...config.errors import NotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +63,8 @@ class AuthService:
         """send otp via sms"""
         try:
             # create random otp and store in db with expiry time
-            now = datetime.utcnow()
-            future_time = now + timedelta(minutes=30)
+            now = datetime.now(pytz.utc)
+            future_time = (now + timedelta(minutes=30)).replace(tzinfo=None)
             otp_new = random.randint(100000, 999999)
 
             async with self.sessionmaker() as session:
@@ -75,7 +79,7 @@ class AuthService:
                 else:
                     db_phone = db_phone_models[0]
 
-                db_otp_model = await self.otp_repo.update_or_create_obj(
+                await self.otp_repo.update_or_create_obj(
                     session=session,
                     p_model=OTPCreate(
                         id=db_phone.id,
@@ -83,11 +87,8 @@ class AuthService:
                         expires_at=future_time,
                     ),
                 )
-                logger.debug(db_otp_model)
+                await session.commit()
 
-                session.commit()
-
-            logger.debug(db_otp_model.model_dump())
             response = await self.twilio_service.send_otp_sms(
                 phone_number, str(otp_new)
             )
@@ -103,7 +104,7 @@ class AuthService:
         """verify phone otp via sms"""
         try:
             # get phone otp data from db
-            with self.sessionmaker() as session:
+            async with self.sessionmaker() as session:
 
                 otp_model = await self.otp_repo.delete_obj_related_by_number(
                     session=session,
@@ -118,7 +119,6 @@ class AuthService:
                         detail="otp match failed",
                     )
 
-                logger.debug("otp matched successfully")
                 # change database states.
                 phone_model = await self.phone_repo.update_obj(
                     session=session,
@@ -126,12 +126,14 @@ class AuthService:
                     p_model=PhoneUpdate(is_primary=True, verified=True),
                 )
 
-                data = self.profile_repo.get_profile_by_user(
+                data = await self.profile_repo.get_profile_by_user(
                     session=session, user_id=phone_model.user_id
                 )
-                session.commit()
+                await session.commit()
 
             return ProfileModel.model_validate(data)
+        except NotFoundError as err:
+            raise err
         except (
             Exception
         ) as err:  # This will catch any exception that is not an HTTPException
@@ -210,5 +212,5 @@ class AuthService:
                 verified=False,
             ),
         )
-        session.flush()
+        await session.flush()
         return PhoneModel.model_validate(db_phone)

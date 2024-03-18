@@ -1,10 +1,9 @@
-import logging
 from typing import Any, Dict, Annotated
 import jwt
-from uuid import uuid4
-from pydantic import BaseModel
+
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 # Assuming you have similar configurations as in the Go code
@@ -64,7 +63,8 @@ class JWTAuth:
         token = jwt.encode(claims, self.secret_key, algorithm=self.algorithm)
         return token
 
-    def decode(self, token: str) -> Dict[str, Any]:
+    @classmethod
+    def decode(cls, token: str) -> Dict[str, Any]:
         try:
             decoded = jwt.decode(
                 token,
@@ -98,7 +98,23 @@ class JWTAuth:
                 detail="Invalid token: {e}",
             ) from exc
 
+    def authenticate_user(self, token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+        return self.decode(token)
 
-def get_current_active_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    logger.info("token : %s", token)
-    return uuid4()
+    def create_access_token(self, claims: UserAccessClaim) -> str:
+        return self.encode(claims.model_dump())
+
+    def create_refresh_token(self, claims: UserRefreshClaim) -> str:
+        return self.encode(claims.model_dump())
+
+    @classmethod
+    def get_current_user(cls, token: str = Depends(oauth2_scheme)):
+        token_dict = cls.decode(token)
+        p_id = token_dict.get("profile_id")
+        if p_id is not None:
+            return UserClaim(profile_id=p_id)
+        raise jwt.InvalidTokenError
+
+
+def get_current_active_user():
+    pass

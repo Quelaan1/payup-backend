@@ -9,7 +9,7 @@ from .errors import (
     ConfigError,
     DatabaseError,
     ExternalServiceError,
-    UnicornException,
+    TokenException,
     NotFoundError,
 )
 from ..models.py_models import BaseResponse
@@ -45,10 +45,10 @@ class CustomExceptionHandler:
         )
 
     @classmethod
-    def unicorn_exception_handler(cls, request: Request, exc: UnicornException):
-        logger.info("UnicornError : %s", exc.args)
-        detail = BaseResponse(message=f"Oops! {exc.name} did something.").model_dump()
-        return JSONResponse(status_code=status.HTTP_418_IM_A_TEAPOT, content=detail)
+    def token_exception_handler(cls, request: Request, exc: TokenException):
+        logger.info("Token Error : %s", exc.detail)
+        detail = BaseResponse(message=f"{exc.name} : {exc.detail}").model_dump()
+        return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content=detail)
 
     @classmethod
     def config_exception_handler(cls, request: Request, exc: ConfigError):
