@@ -4,25 +4,23 @@ import logging
 import random
 from uuid import UUID
 from datetime import datetime, timedelta
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
 
+from .model import OTPCreate, OTPResponse
+from ..user.service import UserService
+from ..user.model import UserCreate
+from ..profile.model import ProfileCreate, Profile as ProfileModel
+from ..phone.model import PhoneCreate, Phone as PhoneModel, PhoneUpdate
 from ...cockroach_sql.database import database
 from ...config.constants import get_settings
 from ...helperClass.verifications.phone.twilio import TwilioService
 from ...cockroach_sql.schemas import PhoneEntity
 from ...cockroach_sql.db_enums import UserType
-from ..user.service import UserService
-from .model import OTPCreate, OTPResponse
-from ..user.model import UserCreate
-from ..auth.model import OTPVerifyResponse
 from ...cockroach_sql.dao.phone_dao import PhoneRepo
 from ...cockroach_sql.dao.otp_dao import OTPRepo
 from ...cockroach_sql.dao.profile_dao import ProfileRepo
 from ...cockroach_sql.dao.user_dao import UserRepo
-from ..profile.model import ProfileCreate, Profile as ProfileModel
-from ..phone.model import PhoneCreate, Phone as PhoneModel, PhoneUpdate
 
 logging.basicConfig(
     level=logging.INFO,

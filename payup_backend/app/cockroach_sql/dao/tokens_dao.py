@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, delete, update, Column
 from sqlalchemy.dialects import postgresql
 
-from ...modules.auth.model import (
+from ...modules.token.model import (
     RefreshTokenCreate,
     RefreshTokenUpdate,
     RefreshToken as RefreshTokenModel,
@@ -196,7 +196,11 @@ class AccessTokenBlacklistRepo:
         """get access_token_blacklist by primary key"""
         stmt = select(self._schema).filter(self._schema.id == obj_id)
         db_model = session.execute(stmt).scalars().first()
-        return AccessTokenBlacklistModel.model_validate(db_model)
+        return (
+            AccessTokenBlacklistModel.model_validate(db_model)
+            if db_model is not None
+            else None
+        )
 
     async def create_obj(
         self, session: Session, p_model: AccessTokenBlacklistCreate

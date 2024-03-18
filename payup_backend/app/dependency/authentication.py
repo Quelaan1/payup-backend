@@ -1,20 +1,12 @@
-from typing import Any, Dict, Optional, List, Annotated
+import logging
+from typing import Any, Dict, Annotated
 import jwt
-
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from uuid import uuid4
 from pydantic import BaseModel
-import json
-import uuid
-from datetime import datetime, timedelta
-
-
-from pydantic import BaseModel, EmailStr
-from uuid import UUID
-from datetime import datetime
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 
+logger = logging.getLogger(__name__)
 # Assuming you have similar configurations as in the Go code
 SECRET_KEY = "your_jwt_secret_key"
 ALGORITHM = "HS256"
@@ -23,7 +15,12 @@ AUDIENCE = ["client@payup.turtlebyte", "localhost"]
 ACCESS_TOKEN_DURATION = 24 * 60  # in minutes
 REFRESH_TOKEN_DURATION = 30 * 24 * 60  # in minutes
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+signin_oauth2_schema = OAuth2PasswordBearer(
+    tokenUrl="auth/signin", scheme_name="signin_oauth2_schema"
+)
+signup_oauth2_schema = OAuth2PasswordBearer(
+    tokenUrl="auth/verify/otp", scheme_name="signup_oauth2_schema"
+)
 
 
 class UserClaim(BaseModel):
@@ -86,10 +83,6 @@ class JWTAuth:
 
             print("JWT is valid. Issuer, Audience, and Subject are verified.")
             return decoded
-        # except jwt.InvalidAudienceError:
-        #     print("Invalid audience")
-        # except jwt.InvalidIssuerError:
-        #     print("Invalid issuer")
         except jwt.ExpiredSignatureError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
@@ -105,18 +98,7 @@ class JWTAuth:
                 detail="Invalid token: {e}",
             ) from exc
 
-    # def authenticate_user(
-    #     self, jwt_auth: JWTAuth = Depends(), token: str = Depends(oauth2_scheme)
-    # ) -> Dict[str, Any]:
-    #     return jwt_auth.decode(token)
 
-    def create_access_token(self, user_claim: UserClaim) -> str:
-        claims = UserAccessClaim(aud="asdad")
-        return self.encode(claims.model_dump())
-
-    def create_refresh_token(self, claims: UserRefreshClaim) -> str:
-        return self.encode(claims.model_dump())
-
-
-def get_current_active_user():
-    pass
+def get_current_active_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    logger.info("token : %s", token)
+    return uuid4()

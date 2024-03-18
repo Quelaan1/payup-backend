@@ -3,11 +3,10 @@
 import logging
 from typing import List, Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-
+from uuid import UUID
 from .model import ItemCreate, Item as ItemModel
 from .service import ItemService
-from ...dependency.authentication import get_current_active_user
+from ...dependency.authentication import get_current_active_user, oauth2_scheme
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,11 +15,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logging.getLogger("twilio.http_client").setLevel(logging.WARNING)
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
 
 class ItemHandler:
-    token: Annotated[str, Depends(oauth2_scheme)]
 
     def __init__(self, name: str):
         self.name = name
@@ -53,12 +49,12 @@ class ItemHandler:
 
     async def read_items_endpoint(
         self,
+        auth_user: Annotated[UUID, Depends(get_current_active_user)],
         skip: int = 0,
         limit: int = 100,
-        user=Depends(get_current_active_user),
     ):
         try:
-            logger.info(self.token)
+            logger.info(auth_user)
             items = self.item_service.get_items(skip=skip, limit=limit)
             return items
         except Exception as e:

@@ -10,12 +10,11 @@ from .model import (
     OTPVerifyRequest,
     OTPVerifyResponse,
     AuthResponse,
-    # RegisterNumberRequestBase,
     Credential,
     TokenBody,
 )
-from ..auth.service import AuthService
-from ..auth.token_service import TokenService
+from .service import AuthService
+from ..token.service import TokenService
 from ...models.py_models import BaseResponse
 
 logger = logging.getLogger(__name__)
@@ -48,17 +47,17 @@ class AuthHandler:
             methods=["POST"],
             response_model_exclude_none=True,
         )
+        # self.router.add_api_route(
+        #     "/signup",
+        #     endpoint=self.set_pin_endpoint,
+        #     status_code=status.HTTP_201_CREATED,
+        #     response_model=AuthResponse,
+        #     methods=["POST"],
+        #     response_model_exclude_none=True,
+        # )
         self.router.add_api_route(
-            "/signup",
-            endpoint=self.set_pin_endpoint,
-            status_code=status.HTTP_201_CREATED,
-            response_model=AuthResponse,
-            methods=["POST"],
-            response_model_exclude_none=True,
-        )
-        self.router.add_api_route(
-            "/login",
-            endpoint=self.login_endpoint,
+            "/signin",
+            endpoint=self.signin_endpoint,
             status_code=status.HTTP_200_OK,
             response_model=AuthResponse,
             methods=["POST"],
@@ -80,7 +79,12 @@ class AuthHandler:
         logger.info(response.model_dump())
         return response
 
-    async def verify_otp_endpoint(self, otp_verify: OTPVerifyRequest):
+    async def verify_otp_endpoint(
+        self, form_data: OAuth2PasswordRequestForm = Depends()
+    ):
+        otp_verify = OTPVerifyRequest(
+            otp=form_data.password, phone_number=form_data.username
+        )
         profile_data = await self.auth_service.verify_otp(
             otp_verify.phone_number, otp_verify.otp
         )
@@ -97,7 +101,7 @@ class AuthHandler:
         logger.info(response.model_dump())
         return response
 
-    async def login_endpoint(self, form_data: OAuth2PasswordRequestForm = Depends()):
+    async def signin_endpoint(self, form_data: OAuth2PasswordRequestForm = Depends()):
         data = {}
         data["scopes"] = []
         for scope in form_data.scopes:

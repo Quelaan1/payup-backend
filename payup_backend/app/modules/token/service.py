@@ -1,13 +1,13 @@
 """layer between router and data access operations. handles db connection, commit, rollback and close."""
 
 import logging
-import pytz
-from uuid import UUID, uuid4
 from datetime import datetime, timedelta
+from uuid import UUID, uuid4
+import pytz
 
 from sqlalchemy.orm import sessionmaker
-from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException, status
 
 from ...cockroach_sql.database import database
 from ...config.constants import get_settings
@@ -17,6 +17,7 @@ from .model import (
     RefreshTokenCreate,
     RefreshToken as RefreshTokenModel,
     AccessTokenBlacklistCreate,
+    TokenVerifyResponse,
 )
 from ...models.py_models import BaseResponse
 from ...config.errors import NotFoundError
@@ -132,6 +133,43 @@ class TokenService:
 
             return await self.get_token_strings(
                 profile_id=rt_claims_model.profile_id, rt_model=rt_model
+            )
+
+        except Exception as err:
+            logger.error("error : %s", err)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=err.args,
+            ) from err
+
+    async def verify_tokens(self, access_token_string: str):
+        """validate an access token"""
+        try:
+            at_claims_dict = self.jwt_service.decode(access_token_string)
+
+            at_claims_model = authentication.UserAccessClaim.model_validate(
+                at_claims_dict
+            )
+
+            verified = True
+            # verify refresh token
+            if not verified:
+                # delete all tokens for the user
+                logger.info("refresh token verification failed")
+                return TokenVerifyResponse(message="invalid token", valid=False)
+
+            with self.sessionmaker() as session:
+                # query for token number if already exist get if, else create token entity in db
+                at_model = await self.access_token_repo.get_obj(
+                    session=session, obj_id=at_claims_model.jti
+                )
+                logger.debug("tokens : %s", at_model)
+                session.commit()
+
+            return (
+                TokenVerifyResponse(valid=True)
+                if at_model is None
+                else TokenVerifyResponse(valid=False, message="token blacklisted")
             )
 
         except Exception as err:
