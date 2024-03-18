@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, HTTPException
 
 from .model import (
     ProfileUpdate as ProfileUpdateRequest,
@@ -57,7 +57,9 @@ class ProfileHandler:
 
         if str(obj_id) != token_user.profile_id:
             logger.info("ids didn't match")
-            raise TokenException(detail="different profile_id")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="different profile_id"
+            )
         response = await self.profile_service.get_user_profile(obj_id=obj_id)
         logger.info(response.model_dump())
         return response

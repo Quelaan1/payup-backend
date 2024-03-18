@@ -1,12 +1,12 @@
 """application auth validation models"""
 
-from typing import Optional, Annotated
-from pydantic import BaseModel, Field, UUID4, ConfigDict
+from typing import Annotated
 from datetime import datetime
+from pydantic import BaseModel, Field, UUID4, ConfigDict
 
-from ..user.model import User as UserModel
 from ...models.py_models import BaseResponse
 from ..profile.model import Profile
+from ..token.model import TokenBody
 
 
 class OTPBase(BaseModel):
@@ -38,70 +38,6 @@ class OTP(OTPBase):
     expires_at: datetime
 
 
-class RefreshTokenBase(BaseModel):
-    """minimum refresh_token information"""
-
-    model_config = ConfigDict(
-        from_attributes=True, revalidate_instances="always", validate_assignment=True
-    )
-
-
-class RefreshTokenUpdate(RefreshTokenBase):
-    """refresh_token update model to pass to dao"""
-
-    jti: UUID4
-    expires_on: datetime
-
-
-class RefreshTokenCreate(RefreshTokenUpdate):
-    """refresh_token create model to be passed to refresh_token_dao
-    id will be token_family
-    """
-
-    user_id: UUID4
-
-
-class RefreshToken(RefreshTokenBase):
-    """refresh_token model returned from refresh_token_dao"""
-
-    id: UUID4
-    jti: UUID4
-    user_id: UUID4
-    expires_on: datetime
-    updated_at: datetime
-
-
-class AccessTokenBlacklistBase(BaseModel):
-    """minimum access_token_blacklist information"""
-
-    model_config = ConfigDict(
-        from_attributes=True, revalidate_instances="always", validate_assignment=True
-    )
-    id: UUID4
-
-
-class AccessTokenBlacklistCreate(AccessTokenBlacklistBase):
-    """access_token_blacklist create model to be passed to access_token_blacklist_dao
-    id will be jti
-    """
-
-    expires_on: datetime
-
-
-class AccessTokenBlacklist(AccessTokenBlacklistBase):
-    """access_token_blacklist model returned from access_token_blacklist_dao"""
-
-    expires_on: datetime
-    created_at: datetime
-    updated_at: datetime
-
-
-class TokenBody(BaseModel):
-    refresh_token: Optional[str] = None
-    access_token: Optional[str] = None
-    token_type: Optional[str] = "bearer"
-
-
 class Credential(BaseModel):
     m_pin: Annotated[int, Field(..., ge=100000, lt=1000000)]
     phone_number: Annotated[
@@ -127,11 +63,11 @@ class OTPResponse(BaseResponse):
     """response on successful otp sent"""
 
 
-class OTPVerifyResponse(BaseResponse):
+class OTPVerifyResponse(BaseResponse, TokenBody):
     """response on successful otp sent"""
 
     user_data: Profile
-    token_data: TokenBody
+    # token_data: TokenBody
 
 
 class OTPVerifyRequest(OTPRequestBase):

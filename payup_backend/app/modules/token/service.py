@@ -7,6 +7,7 @@ import pytz
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from ...cockroach_sql.database import database
@@ -44,7 +45,9 @@ class TokenService:
             conn_string {String} -- CockroachDB connection string.
         """
         self.engine = database.engine
-        self.sessionmaker = sessionmaker(bind=self.engine)
+        self.sessionmaker = sessionmaker(
+            bind=self.engine, class_=AsyncSession, expire_on_commit=False
+        )
 
         self.refresh_token_repo = RefreshTokenRepo()
         self.access_token_repo = AccessTokenBlacklistRepo()
@@ -55,10 +58,12 @@ class TokenService:
         """crates a new refresh token"""
         try:
             rt_jti = uuid4()
-            now = datetime.utcnow()
-            future_time = now + timedelta(minutes=constants.JT.REFRESH_TOKEN_DURATION)
+            now = datetime.now(pytz.UTC)
+            future_time = (
+                now + timedelta(minutes=constants.JT.REFRESH_TOKEN_DURATION)
+            ).replace(tzinfo=None)
 
-            with self.sessionmaker() as session:
+            async with self.sessionmaker() as session:
                 # query for token number if already exist get if, else create token entity in db
                 # get user
                 p_user = await self.user_repo.get_obj_by_filter(
@@ -72,7 +77,7 @@ class TokenService:
                     ),
                 )
                 logger.debug("tokens : %s", rt_model)
-                session.commit()
+                await session.commit()
 
             return await self.get_token_strings(
                 profile_id=profile_id, rt_model=rt_model
@@ -107,13 +112,15 @@ class TokenService:
                 return TokenBody(message="invalid token")
 
             rt_jti = uuid4()
-            now = datetime.utcnow()
-            future_time = now + timedelta(minutes=constants.JT.REFRESH_TOKEN_DURATION)
+            now = datetime.now(pytz.UTC)
+            future_time = (
+                now + timedelta(minutes=constants.JT.REFRESH_TOKEN_DURATION)
+            ).replace(tzinfo=None)
             p_model = RefreshTokenUpdate(expires_on=future_time, jti=rt_jti)
 
-            with self.sessionmaker() as session:
+            async with self.sessionmaker() as session:
                 # query for token number if already exist get if, else create token entity in db
-                db_users = self.user_repo.get_obj_by_filter(
+                db_users = await self.user_repo.get_obj_by_filter(
                     session=session,
                     col_filters=[
                         (self.user_repo._schema.profile_id, rt_claims_model.profile_id)
@@ -129,7 +136,7 @@ class TokenService:
                     ],
                 )
                 logger.debug("tokens : %s", rt_model)
-                session.commit()
+                await session.commit()
 
             return await self.get_token_strings(
                 profile_id=rt_claims_model.profile_id, rt_model=rt_model
@@ -158,13 +165,13 @@ class TokenService:
                 logger.info("refresh token verification failed")
                 return TokenVerifyResponse(message="invalid token", valid=False)
 
-            with self.sessionmaker() as session:
+            async with self.sessionmaker() as session:
                 # query for token number if already exist get if, else create token entity in db
                 at_model = await self.access_token_repo.get_obj(
                     session=session, obj_id=at_claims_model.jti
                 )
                 logger.debug("tokens : %s", at_model)
-                session.commit()
+                await session.commit()
 
             return (
                 TokenVerifyResponse(valid=True)
@@ -185,10 +192,10 @@ class TokenService:
         """crates a new refresh token"""
         try:
             at_jti = uuid4()
-            at_now = datetime.utcnow()
-            at_future_time = at_now + timedelta(
-                minutes=constants.JT.ACCESS_TOKEN_DURATION
-            )
+            at_now = datetime.now(pytz.UTC)
+            at_future_time = (
+                at_now + timedelta(minutes=constants.JT.ACCESS_TOKEN_DURATION)
+            ).replace(tzinfo=None)
             # int(exp_datetime.timestamp())
             refresh_token_claims = authentication.UserRefreshClaim(
                 aud=constants.JT.AUDIENCE,
@@ -252,7 +259,7 @@ class TokenService:
                 at_claims_dict
             )
 
-            with self.sessionmaker() as session:
+            async with self.sessionmaker() as session:
                 await self.refresh_token_repo.delete_obj_related_by_profile(
                     session=session, profile_id=rt_claims_model.profile_id
                 )
@@ -267,7 +274,7 @@ class TokenService:
                             ),
                         ),
                     )
-                    session.commit()
+                    await session.commit()
                     logger.debug("access token blacklisted : %s", at_model)
                 except IntegrityError as e:
                     if "unique constraint" in str(e.orig).lower():

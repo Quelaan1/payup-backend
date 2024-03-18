@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from uuid import UUID
 from .model import ItemCreate, Item as ItemModel
 from .service import ItemService
-from ...dependency.authentication import get_current_active_user, oauth2_scheme
+from ...dependency.authentication import get_current_active_user, signup_oauth2_schema
 
 logging.basicConfig(
     level=logging.INFO,

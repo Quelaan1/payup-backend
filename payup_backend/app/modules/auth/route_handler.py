@@ -2,7 +2,7 @@
 
 import logging
 from fastapi import APIRouter, status, Depends
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 
 from .model import (
     OTPResponse,
@@ -43,7 +43,7 @@ class AuthHandler:
             "/verify/otp",
             endpoint=self.verify_otp_endpoint,
             status_code=status.HTTP_200_OK,
-            response_model=OTPVerifyResponse,
+            response_model=AuthResponse,
             methods=["POST"],
             response_model_exclude_none=True,
         )

@@ -47,7 +47,7 @@ class PhoneRepo:
         logger.debug("db_model : %s", db_model)
         session.add(db_model)
         await session.flush()
-        session.refresh(db_model)
+        await session.refresh(db_model)
         p_resp = PhoneModel.model_validate(db_model)
         return p_resp
 
@@ -82,7 +82,7 @@ class PhoneRepo:
 
         session.add(db_model)
         await session.flush()
-        session.refresh(db_model)
+        await session.refresh(db_model)
         logger.debug("otp didn't matched %s", db_model.id)
         return db_model
 
