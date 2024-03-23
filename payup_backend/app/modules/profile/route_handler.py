@@ -27,6 +27,14 @@ class ProfileHandler:
             "/healthz", self.hello, methods=["GET"], tags=["health-check"]
         )
         self.router.add_api_route(
+            "/",
+            endpoint=self.get_token_profile_endpoint,
+            response_model=ProfileResponse,
+            status_code=status.HTTP_200_OK,
+            methods=["GET"],
+            response_model_exclude_none=True,
+        )
+        self.router.add_api_route(
             "/{obj_id}",
             endpoint=self.get_profile_endpoint,
             response_model=ProfileResponse,
@@ -46,6 +54,17 @@ class ProfileHandler:
     def hello(self):
         logger.debug("Hello : %s", self.name)
         return {"Hello": self.name}
+
+    async def get_token_profile_endpoint(
+        self,
+        token_user: Annotated[UserClaim, Depends(JWTAuth.get_current_user)],
+    ):
+        logger.info("token profile_id : %s", token_user.profile_id)
+        response = await self.profile_service.get_user_profile(
+            obj_id=token_user.profile_id
+        )
+        logger.info(response.model_dump())
+        return response
 
     async def get_profile_endpoint(
         self,

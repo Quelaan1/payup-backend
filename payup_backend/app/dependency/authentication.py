@@ -16,8 +16,10 @@ ACCESS_TOKEN_DURATION = 24 * 60  # in minutes
 REFRESH_TOKEN_DURATION = 30 * 24 * 60  # in minutes
 
 signin_oauth2_schema = OAuth2PasswordBearer(
-    tokenUrl="auth/signin", scheme_name="signin_oauth2_schema"
+    tokenUrl="api/auth/signin",
+    scheme_name="signin_oauth2_schema",
 )
+
 signup_oauth2_schema = OAuth2PasswordBearer(
     tokenUrl="api/auth/verify/otp", scheme_name="signup_oauth2_schema"
 )
@@ -100,7 +102,7 @@ class JWTAuth:
             ) from exc
 
     def authenticate_user(
-        self, token: str = Depends(signup_oauth2_schema)
+        self, token: str = Depends(signin_oauth2_schema)
     ) -> Dict[str, Any]:
         return self.decode(token)
 
@@ -111,7 +113,7 @@ class JWTAuth:
         return self.encode(claims.model_dump())
 
     @classmethod
-    def get_current_user(cls, token: str = Depends(signup_oauth2_schema)):
+    def get_current_user(cls, token: str = Depends(signin_oauth2_schema)):
         token_dict = cls.decode(token)
         p_id = token_dict.get("profile_id")
         if p_id is not None:

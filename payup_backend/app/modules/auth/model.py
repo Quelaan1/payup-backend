@@ -1,8 +1,10 @@
 """application auth validation models"""
 
-from typing import Annotated
+from typing import Annotated, Union
+from typing_extensions import Doc
 from datetime import datetime
 from pydantic import BaseModel, Field, UUID4, ConfigDict
+from fastapi.param_functions import Form
 
 from ...models.py_models import BaseResponse
 from ..profile.model import Profile
@@ -79,6 +81,53 @@ class OTPVerifyRequest(OTPRequestBase):
 
 
 class AuthResponse(BaseResponse, TokenBody):
-    pass
+    profile_id: UUID4
+
     # user_data: Profile
     # token_data: TokenBody
+
+
+class OAuth2PinRequestForm:
+    """
+    fasfdsf
+    """
+
+    def __init__(
+        self,
+        *,
+        grant_type: Annotated[
+            Union[str, None],
+            Form(pattern="password"),
+            Doc(
+                """
+                The OAuth2 spec says it is required and MUST be the fixed string
+                "password". Nevertheless, this dependency class is permissive and
+                allows not passing it. If you want to enforce it, use instead the
+                `OAuth2PasswordRequestFormStrict` dependency.
+                """
+            ),
+        ] = None,
+        phonenumber: Annotated[
+            str,
+            Form(),
+            Doc(
+                """
+                `phonenumber` string. The OAuth2 spec requires the exact field name
+                `phonenumber`.
+                """
+            ),
+        ],
+        pin: Annotated[
+            str,
+            Form(),
+            Doc(
+                """
+                `pin` string. The OAuth2 spec requires the exact field name
+                `pin".
+                """
+            ),
+        ],
+    ):
+        self.grant_type = grant_type
+        self.phonenumber = phonenumber
+        self.pin = pin

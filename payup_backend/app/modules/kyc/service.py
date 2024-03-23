@@ -4,9 +4,20 @@ import logging
 
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException, status
+from uuid import UUID
+
+from .model import KycBase, KycResponse, KycCreate, AadhaarKycResponse
+from ...cockroach_sql.dao.kyc_dao import KycEntityRepo
 from ...cockroach_sql.database import database
+from ...cockroach_sql.db_enums import KycType
 from ...config.constants import get_settings
-from .pan.pan_model import PANVerifyResponseSchema
+from .pan.pan_model import (
+    PANVerifyResponseSchema,
+    PANVerifyRequestSchema,
+    AadhaarVerifyRequestSchema,
+    AadhaarOtpRequestSchema,
+)
+from ...helperClass.verifications.kyc_pan.sandbox import Sandbox
 
 # from ...dependency import authentication
 
@@ -31,16 +42,173 @@ class KycService:
         self.engine = database.engine
         self.sessionmaker = sessionmaker(bind=self.engine)
 
-    async def verify_kyc(self, kyc_entity: str):
+        self._repo = KycEntityRepo()
+
+        self.sandbox_client = Sandbox(
+            constants.SANDBOX.API_KEY, constants.SANDBOX.SECRET_KEY
+        )
+
+    # async def get_kyc_entity(self, obj_id: UUID):
+    #     """
+    #     Wraps a `session` call that gets a profile.
+
+    #     Arguments:
+    #         obj_id {UUID} -- The profile's unique ID.
+    #     """
+    #     async with self.sessionmaker() as session:
+    #         kyc = await self._repo.get_obj(session=session, obj_id=obj_id)
+    #         await session.commit()
+    #     return kyc
+
+    # async def update_kyc_entity(self, obj_id: UUID, update_model: ProfileUpdate):
+    #     """
+    #     Wraps a `session` call that updates kycs in a particular city as a list of dictionaries.
+
+    #     Arguments:
+    #         obj_id {UUID} -- The profile's id.
+    #         update_model {ProfileUpdate} -- profile's update model
+
+    #     Returns:
+    #         List -- A list of dictionaries containing kyc data.
+    #     """
+    #     async with self.sessionmaker() as session:
+    #         kyc = await self._repo.update_obj(
+    #             session=session, obj_id=obj_id, p_model=update_model
+    #         )
+    #         await session.commit()
+    #     return kyc
+
+    async def verify_kyc(self, kyc_data: KycBase) -> KycResponse:
         """validate an access token"""
         try:
-            logger.debug("kyc entity passed : %s", kyc_entity)
-
-            return PANVerifyResponseSchema(message="True")
-
+            if kyc_data.entity_type == KycType.AADHAAR:
+                logger.info("checking: %s", kyc_data.entity_type.name)
+                raise HTTPException(
+                    status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                    detail="aadhaar not implemented",
+                )
+            if kyc_data.entity_type == KycType.GSTN:
+                logger.info("checking: %s", kyc_data.entity_type.name)
+                raise HTTPException(
+                    status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                    detail=f"{kyc_data.entity_type.name} not implemented",
+                )
         except Exception as err:
-            logger.error("error : %s", err)
+            logger.error(err.args)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=err.args,
+                detail=f"{err.args}",
+            ) from err
+
+    async def pan_verify(
+        self,
+        owner_id: UUID,
+        pan_id: str,
+    ):
+        try:
+            logger.info("checking: PAN %s for profile_id: %s", pan_id, owner_id)
+            verification = await self.sandbox_client.verifyPan(pan_number=pan_id)
+            logger.info(verification)
+            if verification is None:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="PAN verification failed",
+                )
+            logger.info(verification.model_dump())
+
+            return KycResponse(
+                entity_id=pan_id,
+                entity_type=KycType.PAN,
+                entity_name=verification.Data.FullName,
+                message=verification.Data.Status,
+            )
+        except Exception as err:
+            logger.error(err.args)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"{err.args}",
+            ) from err
+
+    async def aadhaar_ekyc_otp(
+        self,
+        owner_id: UUID,
+        aadhaar_id: str,
+    ):
+        try:
+            data = AadhaarOtpRequestSchema(aadhaar_number=aadhaar_id)
+            logger.info("checking: AADHAAR %s for profile_id: %s", aadhaar_id, owner_id)
+            ekyc_otp_response = await self.sandbox_client.otpAadhaar(body=data)
+            logger.info(ekyc_otp_response)
+            if ekyc_otp_response is None:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="AADHAAR ekyc otp failed",
+                )
+            logger.info(ekyc_otp_response.model_dump())
+
+            return AadhaarKycResponse(
+                ref_id=ekyc_otp_response.Data.RefId,
+                message=ekyc_otp_response.Data.Message,
+            )
+        except Exception as err:
+            logger.error(err.args)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"{err.args}",
+            ) from err
+
+    async def aadhaar_ekyc_verify(
+        self, owner_id: UUID, otp: str, ref_id: str, aadhaar_number: str
+    ):
+        try:
+            data = AadhaarVerifyRequestSchema(otp=otp, ref_id=ref_id)
+
+            logger.info(
+                "checking: AADHAAR %s for profile_id: %s", data.model_dump(), owner_id
+            )
+            ekyc_verify_response = await self.sandbox_client.verifyAadhaar(body=data)
+            logger.info(ekyc_verify_response)
+            if ekyc_verify_response is None:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="AADHAAR ekyc otp failed",
+                )
+
+            res = KycResponse(
+                entity_id=aadhaar_number,
+                entity_type=KycType.AADHAAR,
+                message=ekyc_verify_response.Data.Message,
+                entity_name=ekyc_verify_response.Data.Name,
+            )
+            logger.info(res)
+            return res
+        except HTTPException as err:
+            raise err
+        except Exception as err:
+            logger.error(err)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"{err.args}",
+            ) from err
+
+    async def create_kyc(self, kyc_data: KycCreate) -> KycResponse:
+        """validate an access token"""
+        try:
+            if kyc_data.entity_type == KycType.AADHAAR:
+                logger.info("checking: %s", kyc_data.entity_type.name)
+                raise HTTPException(
+                    status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                    detail="aadhaar not implemented",
+                )
+            if kyc_data.entity_type == KycType.GSTN:
+                logger.info("checking: %s", kyc_data.entity_type.name)
+                raise HTTPException(
+                    status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                    detail=f"{kyc_data.entity_type.name} not implemented",
+                )
+        except Exception as err:
+            logger.error(err.args)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"{err.args}",
             ) from err

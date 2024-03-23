@@ -1,17 +1,17 @@
 """class that encapsulated api router"""
 
 import logging
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 
 from .model import (
     OTPResponse,
     OTPRequestBase,
     OTPVerifyRequest,
-    OTPVerifyResponse,
     AuthResponse,
     Credential,
     TokenBody,
+    OAuth2PinRequestForm,
 )
 from .service import AuthService
 from ..token.service import TokenService
@@ -79,11 +79,9 @@ class AuthHandler:
         logger.info(response.model_dump())
         return response
 
-    async def verify_otp_endpoint(
-        self, form_data: OAuth2PasswordRequestForm = Depends()
-    ):
+    async def verify_otp_endpoint(self, form_data: OAuth2PinRequestForm = Depends()):
         otp_verify = OTPVerifyRequest(
-            otp=form_data.password, phone_number=form_data.username
+            otp=form_data.pin, phone_number=form_data.phonenumber
         )
         profile_data = await self.auth_service.verify_otp(
             otp_verify.phone_number, otp_verify.otp
@@ -93,8 +91,8 @@ class AuthHandler:
         token_data = await self.token_service.create_new_tokens(
             profile_id=profile_data.id
         )
-        # return AuthResponse(token_data=token_data, user_data=profile_data)
-        return AuthResponse.model_validate(token_data)
+
+        return AuthResponse(**token_data.model_dump(), profile_id=profile_data.id)
 
     async def set_pin_endpoint(self, data: Credential):
         # querying database to check if phone already exist
@@ -103,12 +101,28 @@ class AuthHandler:
         return response
 
     async def signin_endpoint(self, form_data: OAuth2PasswordRequestForm = Depends()):
-        data = {}
-        data["scopes"] = []
-        for scope in form_data.scopes:
-            data["scopes"].append(scope)
+        try:
+            otp_verify = OTPVerifyRequest(
+                otp=form_data.password, phone_number=form_data.username
+            )
 
-        logger.info(dict(form_data))
+            profile_data = await self.auth_service.verify_otp(
+                otp_verify.phone_number, otp_verify.otp
+            )
+
+            logger.info(profile_data.model_dump())
+
+            token_data = await self.token_service.create_new_tokens(
+                profile_id=profile_data.id
+            )
+
+            return AuthResponse(**token_data.model_dump(), profile_id=profile_data.id)
+        except Exception as e:
+            logger.info(e.args)
+            raise HTTPException(
+                detail="e.args", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            ) from e
+
         # verify credentials
 
         # user = db.get(form_data.username, None)

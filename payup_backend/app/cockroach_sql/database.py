@@ -1,3 +1,4 @@
+import os
 import logging
 import tempfile
 import ssl
@@ -37,8 +38,13 @@ class Database(object):
 
             if config.ENV == "local":
                 # Set up the SSL context
+                appdata = os.getenv("APPDATA")
+                logger.info(
+                    "%s/postgresql/root.crt",
+                    appdata,
+                )
                 ssl_context = ssl.create_default_context(
-                    cafile="C:/Users/acer/AppData/Roaming/postgresql/root.crt"
+                    cafile=f"{appdata}/postgresql/root.crt"
                 )
                 ssl_context.check_hostname = (
                     False  # Adjust based on your SSL config needs

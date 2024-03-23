@@ -1,5 +1,6 @@
 """loads environment constants in code"""
 
+import os
 from functools import lru_cache
 from typing import Any, Union
 from pydantic import model_validator
@@ -11,6 +12,7 @@ class SandboxSettings(BaseSettings):
 
     API_KEY: str
     SECRET_KEY: str
+    ACCESS_TOKEN: str
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="sandbox_", extra="ignore"
@@ -18,6 +20,12 @@ class SandboxSettings(BaseSettings):
 
     def __str__(self):
         return settings_as_string(self.model_dump(), "SANDBOX")
+
+    def update_access_token(self, new_token: str):
+        """Update the access token in settings and environment."""
+        self.ACCESS_TOKEN = new_token
+        os.environ["SANDBOX_ACCESS_TOKEN"] = new_token
+        get_settings.cache_clear()
 
 
 class CockroachSettings(BaseSettings):

@@ -3,7 +3,7 @@ import enum
 
 class KycType(enum.Enum):
     PAN = 1
-    AADHAR = 2
+    AADHAAR = 2
     GSTN = 3
 
 

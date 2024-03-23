@@ -25,9 +25,7 @@ class CustomExceptionHandler:
         logger.info("Http exception Error : %s", exc)
 
         detail = BaseResponse(message=msg).model_dump()
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=detail
-        )
+        return JSONResponse(status_code=exc.status_code, content=detail)
 
     @classmethod
     def validation_exception_handler(
@@ -38,7 +36,7 @@ class CustomExceptionHandler:
 
         msg = ""
         for db in errs:
-            msg = msg + db["loc"][1] + ":" + db["msg"] + ", "
+            msg = msg + db["loc"][0] + ":" + db["msg"] + ", "
         detail = BaseResponse(message=msg).model_dump()
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=detail
