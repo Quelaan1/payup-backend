@@ -7,6 +7,20 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+class PayupSettings(BaseSettings):
+    """creates a singleton constants instance"""
+
+    PAN_KEY: str
+    UIDAI_KEY: str
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="payup_", extra="ignore"
+    )
+
+    def __str__(self):
+        return settings_as_string(self.model_dump(), "PAYUP")
+
+
 class SandboxSettings(BaseSettings):
     """creates a singleton constants instance"""
 
@@ -95,6 +109,7 @@ class Settings(BaseSettings):
     SANDBOX: SandboxSettings = SandboxSettings()
     COCKROACH: CockroachSettings = CockroachSettings()
     JT: TokenSettings = TokenSettings()
+    PAYUP: PayupSettings = PayupSettings()
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

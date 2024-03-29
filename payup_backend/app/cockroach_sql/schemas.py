@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     DateTime,
     SmallInteger,
+    BINARY,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -52,14 +53,13 @@ class User(Base):
         UUID(as_uuid=True), ForeignKey(f"{schema}.profiles.id", ondelete="CASCADE")
     )
 
-    kycs = relationship(
-        "KycEntity",
-        back_populates="owner",
-    )
-
     phones = relationship(
         "PhoneEntity",
         back_populates="owner",
+    )
+    # Define the relationship to KycEntity through the association table
+    kyc_entities = relationship(
+        "KycEntity", secondary="user_kyc_relations", back_populates="users"
     )
 
 
@@ -80,15 +80,37 @@ class KycEntity(Base):
     __table_args__ = {"schema": schema}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    entity_id = Column(String, index=True, unique=True)
+    entity_id_encrypted = Column(BINARY, index=True, unique=True)
     entity_name = Column(String, nullable=True)
     verified = Column(Boolean, default=False)
     entity_type = Column(SmallInteger)
-    user_id = Column(
-        UUID(as_uuid=True), ForeignKey(f"{schema}.users.id", ondelete="CASCADE")
+    email = Column(String, nullable=True)
+    gender = Column(String, nullable=True)
+    pincode = Column(String, nullable=True)
+    category = Column(String, nullable=True)
+    status = Column(String)
+
+    # Define the relationship to User through the association table
+    users = relationship(
+        "User", secondary="user_kyc_relations", back_populates="kyc_entities"
     )
 
-    owner = relationship("User", back_populates="kycs")
+
+# Association table for the many-to-many relationship
+class UserKycRelation(Base):
+    __tablename__ = "user_kyc_relations"
+    __table_args__ = {"schema": schema}
+
+    kyc_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{schema}.kyc_entities.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{schema}.users.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
 
 
 class OtpEntity(Base):

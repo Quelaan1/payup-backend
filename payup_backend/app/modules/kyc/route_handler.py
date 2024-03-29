@@ -80,7 +80,7 @@ class KycHandler:
         req_body: KycBase,
         token_user: Annotated[UserClaim, Depends(JWTAuth.get_current_user)],
     ):
-        logger.info(token_user.model_dump())
+
         if req_body.entity_type != KycType.PAN:
             raise ValueError("Wrong entity_type.")
         res_body = await self.kyc_service.pan_verify(

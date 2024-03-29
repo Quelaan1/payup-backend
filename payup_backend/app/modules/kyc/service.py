@@ -1,10 +1,10 @@
 """layer between router and data access operations. handles db connection, commit, rollback and close."""
 
 import logging
-
+from uuid import UUID
+from cryptography.fernet import Fernet
 from sqlalchemy.orm import sessionmaker
 from fastapi import HTTPException, status
-from uuid import UUID
 
 from .model import KycBase, KycResponse, KycCreate, AadhaarKycResponse
 from ...cockroach_sql.dao.kyc_dao import KycEntityRepo
@@ -48,17 +48,47 @@ class KycService:
             constants.SANDBOX.API_KEY, constants.SANDBOX.SECRET_KEY
         )
 
-    # async def get_kyc_entity(self, obj_id: UUID):
-    #     """
-    #     Wraps a `session` call that gets a profile.
+    async def get_kyc_entity(self, obj_id: UUID):
+        """
+        Wraps a `session` call that gets a profile.
 
-    #     Arguments:
-    #         obj_id {UUID} -- The profile's unique ID.
-    #     """
-    #     async with self.sessionmaker() as session:
-    #         kyc = await self._repo.get_obj(session=session, obj_id=obj_id)
-    #         await session.commit()
-    #     return kyc
+        Arguments:
+            obj_id {UUID} -- The profile's unique ID.
+        """
+        async with self.sessionmaker() as session:
+            kyc = await self._repo.get_obj(session=session, obj_id=obj_id)
+            await session.commit()
+        return kyc
+
+    async def filter_kyc_entity(self, entity_id: str, entity_type: KycType):
+        """
+        Wraps a `session` call that gets a profile.
+
+        Arguments:
+            obj_id {UUID} -- The profile's unique ID.
+        """
+        # encrypt data
+        if entity_type == KycType.PAN:
+            key = constants.PAYUP.PAN_KEY
+        elif entity_type == KycType.AADHAAR:
+            key = constants.PAYUP.UIDAI_KEY
+        else:
+            raise HTTPException(
+                detail=f"entity_type : {entity_type.name} has no key set in env",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        coder = Fernet(key)
+        encoded_data = coder.encrypt(entity_id.encode())
+        async with self.sessionmaker() as session:
+            kyc = await self._repo.get_obj_by_filter(
+                session=session,
+                col_filters=[
+                    (self._repo._schema.entity_id, encoded_data),
+                    (self._repo._schema.entity_type, entity_type.value),
+                ],
+            )
+            await session.commit()
+        return kyc
 
     # async def update_kyc_entity(self, obj_id: UUID, update_model: ProfileUpdate):
     #     """
@@ -107,14 +137,10 @@ class KycService:
     ):
         try:
             logger.info("checking: PAN %s for profile_id: %s", pan_id, owner_id)
+            # TODO:first check local database
+            kyc = await self.filter_kyc_entity(pan_id, KycType.PAN)
             verification = await self.sandbox_client.verifyPan(pan_number=pan_id)
             logger.info(verification)
-            if verification is None:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="PAN verification failed",
-                )
-            logger.info(verification.model_dump())
 
             return KycResponse(
                 entity_id=pan_id,
@@ -122,6 +148,7 @@ class KycService:
                 entity_name=verification.Data.FullName,
                 message=verification.Data.Status,
             )
+
         except Exception as err:
             logger.error(err.args)
             raise HTTPException(

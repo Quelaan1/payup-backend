@@ -26,7 +26,7 @@ class Sandbox:
     def __init__(self, sandbox_api_key: str, sandbox_secret: str):
         self.api_key = sandbox_api_key
         self.api_secret = sandbox_secret
-        self.access_token = constants.SANDBOX.ACCESS_TOKEN
+        self.access_token = os.getenv("SANDBOX_ACCESS_TOKEN")
         self.token_expiry = None
 
     async def authenticate(self):
@@ -44,19 +44,16 @@ class Sandbox:
             "x-api-secret": self.api_secret,
             "x-api-version": "1.0",
         }
-        logger.info(headers)
 
         try:
             response = requests.post(url, headers=headers, timeout=10)
-            logger.info(response.headers)
             response.raise_for_status()
             data = response.json()
             logger.info(data)
-
             self.access_token = data.get("access_token")
             constants.SANDBOX.update_access_token(self.access_token)
         except requests.RequestException as e:
-            logger.error("Failed to authenticate: %s", e.args)
+            logger.error("Failed to authenticate: %s", e)
             raise HTTPException(
                 detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from e
@@ -64,10 +61,7 @@ class Sandbox:
     async def refresh_token(self):
         if not self.access_token:
             logger.error("Authentication is required before refreshing the token.")
-            raise HTTPException(
-                detail="Authentication is required before refreshing the token.",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            return await self.authenticate()
 
         url = f"{self._base_url}/authorize"
         headers = {
@@ -82,8 +76,14 @@ class Sandbox:
             response = requests.post(url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
-            self.access_token = data.get("access_token")
-            constants.SANDBOX.update_access_token(self.access_token)
+            # got 403 response
+            code = data.get("code")
+            if code == 403:
+                logger.info("got 403 response : %s", data.get("message"))
+                await self.authenticate()
+            elif code == 200:
+                self.access_token = data.get("access_token")
+                constants.SANDBOX.update_access_token(self.access_token)
 
             logger.info("Token refreshed successfully.")
         except requests.RequestException as e:
@@ -112,7 +112,9 @@ class Sandbox:
         try:
             response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 401:
-                logger.info("Token expired. Refreshing token...")
+                logger.info(
+                    "Token expired. Refreshing token...%s", str(response.content)
+                )
                 await self.refresh_token()
                 headers["Authorization"] = self.access_token
                 response = requests.get(url, headers=headers, timeout=10)
