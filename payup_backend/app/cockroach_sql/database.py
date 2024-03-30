@@ -39,10 +39,6 @@ class Database(object):
             if config.ENV == "local":
                 # Set up the SSL context
                 appdata = os.getenv("APPDATA")
-                logger.info(
-                    "%s/postgresql/root.crt",
-                    appdata,
-                )
                 ssl_context = ssl.create_default_context(
                     cafile=f"{appdata}/postgresql/root.crt"
                 )
@@ -60,13 +56,6 @@ class Database(object):
                     pool_recycle=1800,
                     pool_size=5,
                 )
-                # self._engine = create_async_engine(
-                #     conn_str,
-                #     pool_pre_ping=True,
-                #     pool_recycle=1800,
-                #     pool_use_lifo=True,
-                #     pool_size=5,
-                # )
             elif config.ENV == "prod":
 
                 # Write the certificate content to a temporary file
