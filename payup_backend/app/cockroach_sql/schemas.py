@@ -58,9 +58,7 @@ class User(Base):
         back_populates="owner",
     )
     # Define the relationship to KycEntity through the association table
-    kyc_entities = relationship(
-        "KycEntity", secondary="user_kyc_relations", back_populates="users"
-    )
+    kyc_entities = relationship("UserKycRelation", back_populates="users")
 
 
 class Profile(Base):
@@ -91,9 +89,7 @@ class KycEntity(Base):
     status = Column(String)
 
     # Define the relationship to User through the association table
-    users = relationship(
-        "User", secondary="user_kyc_relations", back_populates="kyc_entities"
-    )
+    users = relationship("UserKycRelation", back_populates="kyc_entities")
 
 
 # Association table for the many-to-many relationship
@@ -111,6 +107,9 @@ class UserKycRelation(Base):
         ForeignKey(f"{schema}.users.id", ondelete="CASCADE"),
         primary_key=True,
     )
+
+    users = relationship("User", back_populates="kyc_entities")
+    kyc_entities = relationship("KycEntity", back_populates="users")
 
 
 class OtpEntity(Base):

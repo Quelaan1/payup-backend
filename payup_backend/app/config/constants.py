@@ -3,22 +3,34 @@
 import os
 from functools import lru_cache
 from typing import Any, Union
-from pydantic import model_validator
+from pydantic import model_validator, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class PayupSettings(BaseSettings):
     """creates a singleton constants instance"""
 
-    PAN_KEY: str
-    UIDAI_KEY: str
+    PAN_KEY: bytes
+    UIDAI_KEY: bytes
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="payup_", extra="ignore"
+        env_file=".env", env_prefix="payup_", extra="ignore", env_file_encoding="utf-8"
     )
 
     def __str__(self):
         return settings_as_string(self.model_dump(), "PAYUP")
+
+    @model_validator(mode="before")
+    @classmethod
+    def encode_keys(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "PAN_KEY" in data.keys():
+                val = (data.get("PAN_KEY") + "=").encode()
+                data["PAN_KEY"] = val
+            if "UIDAI_KEY" in data.keys():
+                val = (data.get("UIDAI_KEY") + "=").encode()
+                data["UIDAI_KEY"] = val
+        return data
 
 
 class SandboxSettings(BaseSettings):

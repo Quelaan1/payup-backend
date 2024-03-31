@@ -1,19 +1,15 @@
 import re
 import logging
-import base64
-from typing import Optional, Any
-from pydantic_core.core_schema import FieldValidationInfo
+from typing import Optional
 from pydantic import (
     BaseModel,
     UUID4,
     ConfigDict,
-    validator,
-    field_validator,
     model_validator,
     Field,
-    computed_field,
 )
 from cryptography.fernet import Fernet
+from fastapi import HTTPException, status
 
 # model_config = ConfigDict(from_attributes=True)
 from ...cockroach_sql.db_enums import KycType
@@ -32,12 +28,12 @@ class KycBase(BaseModel):
         from_attributes=True,
         revalidate_instances="always",
         validate_assignment=True,
+        extra="ignore",
         # use_enum_values=True,
     )
 
     entity_id: Optional[str] = None
     entity_type: KycType
-    entity_id_encrypted: Optional[bytes] = None
 
     @model_validator(mode="after")
     def validate_entity_id(self):
@@ -54,49 +50,55 @@ class KycBase(BaseModel):
                 raise ValueError("Invalid Pan number. It must be ABCDE1234F 10 char.")
         return self
 
-    @validator("entity_id", always=True, pre=True)
-    @classmethod
-    def set_encrypted_id(cls, v: Optional[str], values: dict[str, Any]):
-        if v is not None:
-            if values["entity_type"] == KycType.PAN.value:
-                key = constants.PAYUP.PAN_KEY
-            elif values["entity_type"] == KycType.AADHAAR.value:
-                key = constants.PAYUP.UIDAI_KEY
-
-            coder = Fernet(key)
-            encoded = coder.encrypt(v.encode())
-            values["entity_id_encrypted"] = encoded
-        return v
-
-    @validator("entity_id_encrypted", always=True, pre=True)
-    @classmethod
-    def set_decrypted_id(cls, v: Optional[str], values: dict[str, Any]):
-        if v is not None and "entity_id" not in values.keys():
-            # Simple base64 decoding, replace with actual decryption in production
-            if values["entity_type"] == KycType.PAN.value:
-                key = constants.PAYUP.PAN_KEY
-            elif values["entity_type"] == KycType.AADHAAR.value:
-                key = constants.PAYUP.UIDAI_KEY
-
-            coder = Fernet(key)
-            decoded = coder.decrypt(v.encode())
-            values["entity_id"] = decoded
-        return v
-
-
-class KycCreate(KycBase):
-    owner_id: UUID4
-    entity_name: Optional[str] = None
-    verified: Optional[bool] = None
-
 
 class KycUpdate(KycBase):
     verified: Optional[bool] = None
     entity_name: Optional[str] = None
 
 
+class KycCreate(KycUpdate):
+    owner_id: UUID4
+    entity_id_encrypted: Optional[bytes] = None
+
+    @model_validator(mode="after")
+    def set_encrypted_id(self):
+        logger.info(self)
+        try:
+            if self.entity_id is not None and self.entity_id_encrypted is None:
+                if self.entity_type == KycType.PAN:
+                    key = constants.PAYUP.PAN_KEY
+                elif self.entity_type == KycType.AADHAAR:
+                    key = constants.PAYUP.UIDAI_KEY
+                coder = Fernet(key)
+                encoded = coder.encrypt(self.entity_id.encode())
+                self.entity_id_encrypted = encoded
+            return self
+        except Exception as e:
+            logger.error("%s", e)
+            raise HTTPException(
+                detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            ) from e
+
+
 class Kyc(KycUpdate):
     owner_id: UUID4
+    entity_id_encrypted: Optional[bytes] = None
+
+    @model_validator(mode="after")
+    def set_decrypted_id(self):
+        logger.info(self)
+
+        if self.entity_id_encrypted is not None and self.entity_id is None:
+            # Simple base64 decoding, replace with actual decryption in production
+            if self.entity_type == KycType.PAN:
+                key = constants.PAYUP.PAN_KEY
+            elif self.entity_type == KycType.AADHAAR:
+                key = constants.PAYUP.UIDAI_KEY
+
+            coder = Fernet(key)
+            decoded = coder.decrypt(self.entity_id_encrypted.decode())
+            self.entity_id = decoded
+        return self
 
 
 class KycResponse(BaseResponse, KycBase):

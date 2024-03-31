@@ -1,8 +1,8 @@
 """interface to sandbox api"""
 
-import os
 import logging
 import requests
+from typing import Optional
 from fastapi import HTTPException, status
 
 from ....modules.kyc.pan.pan_model import (
@@ -26,7 +26,7 @@ class Sandbox:
     def __init__(self, sandbox_api_key: str, sandbox_secret: str):
         self.api_key = sandbox_api_key
         self.api_secret = sandbox_secret
-        self.access_token = os.getenv("SANDBOX_ACCESS_TOKEN")
+        self.access_token = constants.SANDBOX.ACCESS_TOKEN
         self.token_expiry = None
 
     async def authenticate(self):
@@ -58,9 +58,12 @@ class Sandbox:
                 detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from e
 
-    async def refresh_token(self):
-        if not self.access_token:
+    async def refresh_token(self, code: Optional[int] = None):
+        if not self.access_token or code is None:
             logger.error("Authentication is required before refreshing the token.")
+            return await self.authenticate()
+        if code == 403:
+            logger.info("got 403 response")
             return await self.authenticate()
 
         url = f"{self._base_url}/authorize"
@@ -78,10 +81,7 @@ class Sandbox:
             data = response.json()
             # got 403 response
             code = data.get("code")
-            if code == 403:
-                logger.info("got 403 response : %s", data.get("message"))
-                await self.authenticate()
-            elif code == 200:
+            if code == 200:
                 self.access_token = data.get("access_token")
                 constants.SANDBOX.update_access_token(self.access_token)
 
@@ -111,11 +111,13 @@ class Sandbox:
         }
         try:
             response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 401:
+            if response.status_code >= 400:
                 logger.info(
                     "Token expired. Refreshing token...%s", str(response.content)
                 )
-                await self.refresh_token()
+                data = response.json()
+                code = data.get("code")
+                await self.refresh_token(code)
                 headers["Authorization"] = self.access_token
                 response = requests.get(url, headers=headers, timeout=10)
 
@@ -157,9 +159,11 @@ class Sandbox:
             response = requests.post(
                 url, json=body.model_dump(), headers=headers, timeout=20
             )
-            if response.status_code == 401:
+            if response.status_code >= 400:
                 logger.info("Token expired. Refreshing token...")
-                await self.refresh_token()
+                data = response.json()
+                code = data.get("code")
+                await self.refresh_token(code)
                 headers["Authorization"] = self.access_token
                 response = requests.post(
                     url, json=body.model_dump(), headers=headers, timeout=10
@@ -202,9 +206,11 @@ class Sandbox:
             response = requests.post(
                 url, json=body.model_dump(), headers=headers, timeout=10
             )
-            if response.status_code == 401:
+            if response.status_code >= 400:
                 logger.info("Token expired. Refreshing token...")
-                await self.refresh_token()
+                data = response.json()
+                code = data.get("code")
+                await self.refresh_token(code)
                 headers["Authorization"] = self.access_token
                 response = requests.post(
                     url, json=body.model_dump(), headers=headers, timeout=10

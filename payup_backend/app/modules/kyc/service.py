@@ -137,13 +137,21 @@ class KycService:
     ):
         try:
             logger.info("checking: PAN %s for profile_id: %s", pan_id, owner_id)
-            # TODO:first check local database
-            kyc = await self.filter_kyc_entity(pan_id, KycType.PAN)
             verification = await self.sandbox_client.verifyPan(pan_number=pan_id)
             logger.info(verification)
 
+            if verification.Data.Status.lower() == "valid":
+                p_model = KycCreate(
+                    entity_id=verification.Data.Pan,
+                    entity_name=verification.Data.FullName,
+                    entity_type=KycType.PAN,
+                    owner_id=owner_id,
+                    verified=True,
+                )
+                logger.info(p_model)
+
             return KycResponse(
-                entity_id=pan_id,
+                entity_id=verification.Data.Pan,
                 entity_type=KycType.PAN,
                 entity_name=verification.Data.FullName,
                 message=verification.Data.Status,
