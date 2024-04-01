@@ -19,20 +19,20 @@ class KycLookupRepo:
     """crud on kyc_entities model"""
 
     def __init__(self):
-        self._schema = KycLookupSchema
+        self.repo_schema = KycLookupSchema
 
     async def get_objs(
         self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[KycLookupModel]:
         """get kyc_entities list, paginated"""
-        stmt = select(self._schema).offset(skip).limit(limit)
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [KycLookupModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get kyc_entity by primary key"""
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         return KycLookupModel.model_validate(db_model)
@@ -42,7 +42,7 @@ class KycLookupRepo:
     ) -> KycLookupModel:
         """create kyc_entity in db"""
         try:
-            db_model = self._schema(
+            db_model = self.repo_schema(
                 **p_model.model_dump(exclude=["entity_type"], by_alias=True)
             )
             db_model.entity_type = p_model.entity_type.value
@@ -62,8 +62,8 @@ class KycLookupRepo:
     ) -> None:
         """update kyc_entity gives its primary key and update model"""
         stmt = (
-            update(self._schema)
-            .where(self._schema.id == obj_id)
+            update(self.repo_schema)
+            .where(self.repo_schema.id == obj_id)
             .values(**p_model.model_dump(exclude=[""], exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
@@ -75,7 +75,7 @@ class KycLookupRepo:
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes kyc_entity from db"""
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         await session.flush()
         logger.info("Rows updated: %s", result.rowcount)
@@ -84,7 +84,7 @@ class KycLookupRepo:
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """filter kyc_entities table for list"""
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
         result = await session.execute(stmt)

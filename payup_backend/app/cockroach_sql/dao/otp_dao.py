@@ -21,27 +21,27 @@ class OTPRepo:
     """crud on otps model"""
 
     def __init__(self):
-        self._schema = OTPSchema
+        self.repo_schema = OTPSchema
 
     async def get_objs(
         self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[OTPModel]:
         """get otps list, paginated"""
-        stmt = select(self._schema).offset(skip).limit(limit)
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [OTPModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get otp by primary key"""
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         return OTPModel.model_validate(db_model)
 
     async def create_obj(self, session: AsyncSession, p_model: OTPCreate) -> OTPModel:
         """create otp entity in db"""
-        db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
+        db_model = self.repo_schema(**p_model.model_dump(exclude=[""], by_alias=True))
         session.add(db_model)
         await session.flush()
         await session.refresh(db_model)
@@ -53,8 +53,8 @@ class OTPRepo:
     ) -> None:
         """update otp gives its primary key and update model"""
         stmt = (
-            update(self._schema)
-            .where(self._schema.id == obj_id)
+            update(self.repo_schema)
+            .where(self.repo_schema.id == obj_id)
             .values(**p_model.model_dump(exclude=[""], exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
@@ -69,7 +69,7 @@ class OTPRepo:
         unique_identifier = (
             p_model.id
         )  # Replace `unique_field` with the actual field name used to identify uniqueness
-        stmt = select(self._schema).filter(self._schema.id == unique_identifier)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == unique_identifier)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         if not db_model is None:
@@ -78,7 +78,9 @@ class OTPRepo:
                 setattr(db_model, key, value)
         else:
             # The record does not exist, create a new one
-            db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
+            db_model = self.repo_schema(
+                **p_model.model_dump(exclude=[""], by_alias=True)
+            )
             session.add(db_model)
 
         await session.flush()
@@ -88,7 +90,7 @@ class OTPRepo:
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes otp entity from db"""
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         await session.refresh()
         logger.info("Rows deleted: %s", result.rowcount)
@@ -101,11 +103,11 @@ class OTPRepo:
     ):
         """Attempts to delete an otp entity from db and returns the deleted object if successful."""
         # Fetch and delete in a single transaction
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         stmt = stmt.join_from(
             PhoneSchema,
-            self._schema,
-            PhoneSchema.id == self._schema.id,
+            self.repo_schema,
+            PhoneSchema.id == self.repo_schema.id,
         ).where(PhoneSchema.m_number == phone_number)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
@@ -118,7 +120,7 @@ class OTPRepo:
                 name=__name__, detail="otp not found"
             )  # Object not found, can't delete
 
-        delete_stmt = delete(self._schema)
+        delete_stmt = delete(self.repo_schema)
         for col, val in col_filters:
             delete_stmt = delete_stmt.where(col == val)
         result = await session.execute(delete_stmt)
@@ -132,7 +134,7 @@ class OTPRepo:
     ):
         """Attempts to delete an otp entity from db and returns the deleted object if successful."""
         # Fetch and delete in a single transaction
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
         result = await session.execute(stmt)
@@ -141,7 +143,7 @@ class OTPRepo:
             logger.info("Object not found with filters: %s", col_filters)
             return None  # Object not found, can't delete
 
-        delete_stmt = delete(self._schema)
+        delete_stmt = delete(self.repo_schema)
         for col, val in col_filters:
             delete_stmt = delete_stmt.where(col == val)
         result = await session.execute(delete_stmt)
@@ -152,7 +154,7 @@ class OTPRepo:
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """filter otp table for list"""
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
         result = await session.execute(stmt)
@@ -161,11 +163,11 @@ class OTPRepo:
 
     async def get_otp_by_phone(self, session: AsyncSession, phone_number: str):
         """filter otp table for list"""
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         stmt = stmt.join_from(
             PhoneSchema,
-            self._schema,
-            PhoneSchema.id == self._schema.id,
+            self.repo_schema,
+            PhoneSchema.id == self.repo_schema.id,
         ).where(PhoneSchema.m_number == phone_number)
         result = await session.execute(stmt)
         db_model = result.scalars().first()

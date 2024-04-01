@@ -68,7 +68,7 @@ class TokenService:
                 # get user
                 p_user = await self.user_repo.get_obj_by_filter(
                     session=session,
-                    col_filters=[(self.user_repo._schema.profile_id, profile_id)],
+                    col_filters=[(self.user_repo.repo_schema.profile_id, profile_id)],
                 )
                 rt_model = await self.refresh_token_repo.create_obj(
                     session=session,
@@ -123,7 +123,10 @@ class TokenService:
                 db_users = await self.user_repo.get_obj_by_filter(
                     session=session,
                     col_filters=[
-                        (self.user_repo._schema.profile_id, rt_claims_model.profile_id)
+                        (
+                            self.user_repo.repo_schema.profile_id,
+                            rt_claims_model.profile_id,
+                        )
                     ],
                 )
                 rt_model = await self.refresh_token_repo.update_obj(
@@ -131,8 +134,8 @@ class TokenService:
                     p_model=p_model,
                     obj_id=rt_claims_model.token_family,
                     col_filters=[
-                        (self.refresh_token_repo._schema.jti, rt_claims_model.jti),
-                        (self.refresh_token_repo._schema.user_id, db_users[0].id),
+                        (self.refresh_token_repo.repo_schema.jti, rt_claims_model.jti),
+                        (self.refresh_token_repo.repo_schema.user_id, db_users[0].id),
                     ],
                 )
                 logger.debug("tokens : %s", rt_model)

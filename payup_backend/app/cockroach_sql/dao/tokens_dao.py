@@ -30,20 +30,20 @@ class RefreshTokenRepo:
     """crud on refresh_token_entities model"""
 
     def __init__(self):
-        self._schema = RefreshTokenSchema
+        self.repo_schema = RefreshTokenSchema
 
     async def get_objs(
         self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[RefreshTokenModel]:
         """get refresh_token_entities list, paginated"""
-        stmt = select(self._schema).offset(skip).limit(limit)
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [RefreshTokenModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get refresh_token_entitie by primary key"""
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         return RefreshTokenModel.model_validate(db_model)
@@ -52,7 +52,7 @@ class RefreshTokenRepo:
         self, session: AsyncSession, p_model: RefreshTokenCreate
     ) -> RefreshTokenModel:
         """create refresh_token_entitie entity in db"""
-        db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
+        db_model = self.repo_schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
         await session.flush()
@@ -69,8 +69,8 @@ class RefreshTokenRepo:
         col_filters: Optional[list[tuple[Column, Any]]] = None,
     ):
         """update refresh_token given its primary key and update model"""
-        # db_model = session.get(self._schema, obj_id)
-        stmt = select(self._schema).where(self._schema.id == obj_id)
+        # db_model = session.get(self.repo_schema, obj_id)
+        stmt = select(self.repo_schema).where(self.repo_schema.id == obj_id)
         if col_filters is not None:
             for col, val in col_filters:
                 stmt = stmt.where(col == val)
@@ -107,7 +107,7 @@ class RefreshTokenRepo:
             p_model.id
         )  # Replace `unique_field` with the actual field name used to identify uniqueness
         result = await session.execute(
-            select(self._schema).filter_by(id=unique_identifier)
+            select(self.repo_schema).filter_by(id=unique_identifier)
         )
         db_model = result.scalars().first()
 
@@ -115,7 +115,9 @@ class RefreshTokenRepo:
             for key, value in p_model.model_dump(exclude=["id"], by_alias=True).items():
                 setattr(db_model, key, value)
         else:
-            db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
+            db_model = self.repo_schema(
+                **p_model.model_dump(exclude=[""], by_alias=True)
+            )
             session.add(db_model)
 
         await session.flush()
@@ -126,7 +128,7 @@ class RefreshTokenRepo:
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes refresh_token_entitie entity from db"""
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         await session.refresh()
         logger.info("Rows deleted: %s", result.rowcount)
@@ -137,7 +139,7 @@ class RefreshTokenRepo:
     ):
         """Attempts to delete an refresh_token_entitie entity from db and returns the deleted object if successful."""
         # Build a delete statement based on the same filters
-        delete_stmt = delete(self._schema)
+        delete_stmt = delete(self.repo_schema)
         for col, val in col_filters:
             delete_stmt = delete_stmt.where(col == val)
 
@@ -155,8 +157,8 @@ class RefreshTokenRepo:
         """Attempts to delete an otp entity from db and returns the deleted object if successful."""
         # Fetch and delete in a single transaction
         # Build a delete statement
-        delete_stmt = delete(self._schema).where(
-            self._schema.user_id.in_(
+        delete_stmt = delete(self.repo_schema).where(
+            self.repo_schema.user_id.in_(
                 select(UserSchema.id).where(UserSchema.profile_id == profile_id)
             )
         )
@@ -174,7 +176,7 @@ class RefreshTokenRepo:
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """filter refresh_token_entitie table for list"""
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
         result = await session.execute(stmt)
@@ -186,13 +188,13 @@ class AccessTokenBlacklistRepo:
     """crud on access_token_blacklists model"""
 
     def __init__(self):
-        self._schema = AccessTokenBlacklistSchema
+        self.repo_schema = AccessTokenBlacklistSchema
 
     async def get_objs(
         self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[AccessTokenBlacklistModel]:
         """get access_token_blacklists list, paginated"""
-        stmt = select(self._schema).offset(skip).limit(limit)
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [
@@ -201,7 +203,7 @@ class AccessTokenBlacklistRepo:
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get access_token_blacklist by primary key"""
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         return AccessTokenBlacklistModel.model_validate(db_model)
@@ -210,7 +212,7 @@ class AccessTokenBlacklistRepo:
         self, session: AsyncSession, p_model: AccessTokenBlacklistCreate
     ) -> AccessTokenBlacklistModel:
         """create access_token_blacklist entity in db"""
-        db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
+        db_model = self.repo_schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
         await session.flush()

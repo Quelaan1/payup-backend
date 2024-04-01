@@ -16,20 +16,20 @@ class KycEntityRepo:
     """crud on kyc_entities model"""
 
     def __init__(self):
-        self._schema = KycEntitySchema
+        self.repo_schema = KycEntitySchema
 
     async def get_objs(
         self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[KycModel]:
         """get kyc_entities list, paginated"""
-        stmt = select(self._schema).offset(skip).limit(limit)
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [KycModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get kyc_entity by primary key"""
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         return KycModel.model_validate(db_model)
@@ -42,9 +42,9 @@ class KycEntityRepo:
             p_model.entity_id_encrypted
         )  # Assuming `id` is the unique identifier for KycEntity
         stmt = (
-            select(self._schema)
-            .where(self._schema.entity_id_encrypted == unique_identifier)
-            .where(self._schema.entity_type == p_model.entity_type.value)
+            select(self.repo_schema)
+            .where(self.repo_schema.entity_id_encrypted == unique_identifier)
+            .where(self.repo_schema.entity_type == p_model.entity_type.value)
         )
         result = await session.execute(stmt)
         db_model = result.scalars().first()
@@ -60,7 +60,7 @@ class KycEntityRepo:
     async def create_obj(self, session: AsyncSession, p_model: KycCreate) -> KycModel:
         """create kyc_entity in db"""
         try:
-            db_model = self._schema(
+            db_model = self.repo_schema(
                 **p_model.model_dump(
                     exclude=["entity_id", "entity_type"], by_alias=True
                 )
@@ -82,8 +82,8 @@ class KycEntityRepo:
     ) -> None:
         """update kyc_entity gives its primary key and update model"""
         stmt = (
-            update(self._schema)
-            .where(self._schema.id == obj_id)
+            update(self.repo_schema)
+            .where(self.repo_schema.id == obj_id)
             .values(**p_model.model_dump(exclude=["entity_id"], exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
@@ -95,7 +95,7 @@ class KycEntityRepo:
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes kyc_entity from db"""
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         await session.flush()
         logger.info("Rows updated: %s", result.rowcount)
@@ -104,7 +104,7 @@ class KycEntityRepo:
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """filter kyc_entities table for list"""
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
         result = await session.execute(stmt)

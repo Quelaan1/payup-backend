@@ -4,7 +4,7 @@ import logging
 from uuid import UUID
 from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, Column
+from sqlalchemy import select, delete, Column
 
 from ...modules.profile.model import (
     ProfileCreate,
@@ -23,20 +23,20 @@ class ProfileRepo:
     """crud on profiles model"""
 
     def __init__(self):
-        self._schema = ProfileSchema
+        self.repo_schema = ProfileSchema
 
     async def get_objs(
         self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[ProfileModel]:
         """get profiles list, paginated"""
-        stmt = select(self._schema).offset(skip).limit(limit)
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [ProfileModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get profile by primary key"""
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         return ProfileModel.model_validate(db_model)
@@ -45,7 +45,7 @@ class ProfileRepo:
         self, session: AsyncSession, p_model: ProfileCreate
     ) -> ProfileModel:
         """create profile entity in db"""
-        db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
+        db_model = self.repo_schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
         await session.flush()
@@ -62,8 +62,8 @@ class ProfileRepo:
         col_filters: Optional[list[tuple[Column, Any]]] = None,
     ):
         """update profile gives its primary key and update model"""
-        # db_model = session.get(self._schema, obj_id)
-        stmt = select(self._schema).where(self._schema.id == obj_id)
+        # db_model = session.get(self.repo_schema, obj_id)
+        stmt = select(self.repo_schema).where(self.repo_schema.id == obj_id)
         if not col_filters is None:
             for col, val in col_filters:
                 stmt = stmt.where(col == val)
@@ -85,7 +85,7 @@ class ProfileRepo:
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes profile entity from db"""
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
         result = session.execute(stmt)
         await session.flush()
         logger.info("Rows updated: %s", result.rowcount)
@@ -94,7 +94,7 @@ class ProfileRepo:
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """filter profile table for list"""
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
         result = await session.execute(stmt)
@@ -116,11 +116,11 @@ class ProfileRepo:
             Profile -- A Profile object.
         """
         stmt = (
-            select(self._schema)
+            select(self.repo_schema)
             .join_from(
-                self._schema,
+                self.repo_schema,
                 UserSchema,
-                UserSchema.profile_id == self._schema.id,
+                UserSchema.profile_id == self.repo_schema.id,
             )
             .where(UserSchema.id == user_id)
         )

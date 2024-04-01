@@ -8,7 +8,6 @@ from .service import KycService
 from .model import (
     KycBase,
     KycResponse,
-    KycCreate,
     KycCreateRequest,
     AadhaarKycResponse,
     AadhaarKycRequest,
@@ -51,7 +50,7 @@ class KycHandler:
         self.router.add_api_route(
             "/aadhaar/verify",
             endpoint=self.check_aadhaar_otp_endpoint,
-            response_model=KycResponse,
+            response_model=ProfileResponse,
             status_code=status.HTTP_200_OK,
             methods=["POST"],
             response_model_exclude_none=True,
@@ -112,7 +111,7 @@ class KycHandler:
     ):
         logger.info(token_user.model_dump())
         res_body = await self.kyc_service.aadhaar_ekyc_verify(
-            owner_id=token_user.profile_id,
+            profile_id=token_user.profile_id,
             otp=req_body.otp,
             ref_id=req_body.ref_id,
             aadhaar_number=req_body.aadhaar_number,
@@ -126,16 +125,13 @@ class KycHandler:
         token_user: Annotated[UserClaim, Depends(JWTAuth.get_current_user)],
     ):
         logger.info(token_user.model_dump())
-        res_body = await self.kyc_service.create_kyc(
+        if req_body.entity_type == KycType.GSTN:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail=f"{req_body.entity_type.name} not implemented",
+            )
+        res_body = await self.kyc_service.create_pan_kyc(
             kyc_data=req_body, profile_id=token_user.profile_id
         )
         logger.info(res_body.model_dump())
         return res_body
-
-    # async def all_kyc_endpoint(self, req_body: KycRefreshRequest):
-    #     res_body = await self.kyc_service.refresh_kycs(
-    #         refresh_kyc_string=req_body.refresh_kyc
-    #     )
-    #     logger.info(res_body.model_dump())
-
-    #     return res_body

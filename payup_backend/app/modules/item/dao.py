@@ -8,12 +8,12 @@ from ...cockroach_sql.schemas import Item as ItemSchema
 
 class ItemRepo:
     def __init__(self):
-        self._schema = ItemSchema
+        self.repo_schema = ItemSchema
 
     async def get_objs(
         self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[ItemModel]:
-        stmt = select(self._schema).offset(skip).limit(limit)
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [ItemModel.model_validate(item) for item in db_models]
@@ -22,11 +22,11 @@ class ItemRepo:
         self, session: AsyncSession, p_model: ItemCreate, user_id: UUID
     ) -> None:
         # stmt = insert(ItemSchema).values(**p_model.model_dump(), owner_id=user_id)
-        db_model = self._schema(**p_model.model_dump(), owner_id=user_id)
+        db_model = self.repo_schema(**p_model.model_dump(), owner_id=user_id)
         await session.add(db_model)
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         return ItemModel.model_validate(db_model) if db_model else None
@@ -35,15 +35,15 @@ class ItemRepo:
         self, session: AsyncSession, obj_id: UUID, p_model: ItemUpdate
     ) -> None:
         stmt = (
-            update(self._schema)
-            .where(self._schema.id == obj_id)
+            update(self.repo_schema)
+            .where(self.repo_schema.id == obj_id)
             .values(**p_model.model_dump(exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
         await session.execute(stmt)
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
         await session.execute(stmt)
 
 

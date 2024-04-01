@@ -17,27 +17,27 @@ class UserRepo:
     """crud on users model"""
 
     def __init__(self):
-        self._schema = UserSchema
+        self.repo_schema = UserSchema
 
     async def get_objs(
         self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[UserModel]:
         """get users list, paginated"""
-        stmt = select(self._schema).offset(skip).limit(limit)
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [UserModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get user by primary key"""
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         return UserModel.model_validate(db_model)
 
     async def create_obj(self, session: AsyncSession, p_model: UserCreate) -> UserModel:
         """create user entity in db"""
-        db_model = self._schema(**p_model.model_dump(exclude=[""], by_alias=True))
+        db_model = self.repo_schema(**p_model.model_dump(exclude=[""], by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
         await session.flush()
@@ -51,8 +51,8 @@ class UserRepo:
     ) -> None:
         """update user gives its primary key and update model"""
         stmt = (
-            update(self._schema)
-            .where(self._schema.id == obj_id)
+            update(self.repo_schema)
+            .where(self.repo_schema.id == obj_id)
             .values(**p_model.model_dump(exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
@@ -63,7 +63,7 @@ class UserRepo:
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes user entity from db"""
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         await session.flush()
         logger.info("Rows updated: %s", result.rowcount)
@@ -73,7 +73,7 @@ class UserRepo:
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """filter user table for list"""
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
         result = await session.execute(stmt)
@@ -95,11 +95,11 @@ class UserRepo:
     #         User -- A User object.
     #     """
     #     stmt = (
-    #         select(self._schema)
+    #         select(self.repo_schema)
     #         .join_from(
-    #             self._schema,
+    #             self.repo_schema,
     #             VerifierSchema,
-    #             VerifierSchema.user_id == self._schema.id,
+    #             VerifierSchema.user_id == self.repo_schema.id,
     #         )
     #         .where(VerifierSchema.phone_number == phone_number)
     #     )

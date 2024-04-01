@@ -47,7 +47,7 @@ class PhoneService:
                 p_models = self.phone_repo.get_obj_by_filter(
                     session=session,
                     col_filters=[
-                        (self.phone_repo._schema.user_id, user_id),
+                        (self.phone_repo.repo_schema.user_id, user_id),
                     ],
                 )
                 logger.debug("phones : %s", p_models)
@@ -80,9 +80,9 @@ class PhoneService:
                     obj_id=phone_id,
                     p_model=PhoneUpdate(m_pin=pin),
                     col_filters=[
-                        (self.phone_repo._schema.user_id, user_id),
-                        (self.phone_repo._schema.is_primary, True),
-                        (self.phone_repo._schema.verified, True),
+                        (self.phone_repo.repo_schema.user_id, user_id),
+                        (self.phone_repo.repo_schema.is_primary, True),
+                        (self.phone_repo.repo_schema.verified, True),
                     ],
                 )
 

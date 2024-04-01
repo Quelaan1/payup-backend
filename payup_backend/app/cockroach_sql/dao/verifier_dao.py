@@ -22,23 +22,23 @@
 # class VerifierRepo:
 
 #     def __init__(self):
-#         self._schema = VerifierSchema
+#         self.repo_schema = VerifierSchema
 #         self._model = VerifierModel
 
 #     def get_objs(self, session: Session, skip: int = 0, limit: int = 100):
-#         stmt = select(self._schema).offset(skip).limit(limit)
+#         stmt = select(self.repo_schema).offset(skip).limit(limit)
 #         db_models = session.execute(stmt).scalars().all()
 #         return [self._model.model_validate(db_model) for db_model in db_models]
 
 #     def get_obj(self, session: Session, obj_id: UUID):
-#         stmt = select(self._schema).filter(self._schema.id == obj_id)
+#         stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
 #         db_model = session.execute(stmt).scalars().first()
 #         return self._model.model_validate(db_model)
 
 #     def get_obj_by_phone_number(self, session: Session, phone_number: str):
 #         stmt = (
-#             select(self._schema).filter(self._schema.phone_number == phone_number)
-#             # select(self._schema)
+#             select(self.repo_schema).filter(self.repo_schema.phone_number == phone_number)
+#             # select(self.repo_schema)
 #             # .join(UserSchema, UserSchema.id == VerifierSchema.user_id)
 #             # .where(UserSchema.phone_number == phone_number)
 #         )
@@ -52,7 +52,7 @@
 
 #     def create_obj(self, session: Session, p_model: VerifierCreate):
 
-#         db_model = self._schema(**p_model.model_dump(exclude=["m_pin"]))
+#         db_model = self.repo_schema(**p_model.model_dump(exclude=["m_pin"]))
 #         if p_model.m_pin is not None:
 #             db_model.set_password(p_model.m_pin.get_secret_value())
 
@@ -73,21 +73,21 @@
 #         p_model: VerifierUpdate,
 #     ) -> None:
 #         stmt = (
-#             update(self._schema)
-#             .where(self._schema.id == obj_id)
+#             update(self.repo_schema)
+#             .where(self.repo_schema.id == obj_id)
 #             .values(**p_model.model_dump(exclude_unset=True))
 #             .execution_options(synchronize_session="fetch")
 #         )
 #         session.execute(stmt)
 
 #     def delete_obj(self, session: Session, obj_id: UUID) -> None:
-#         stmt = delete(self._schema).where(self._schema.id == obj_id)
+#         stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
 #         session.execute(stmt)
 
 #     def get_obj_by_filter(
 #         self, session: Session, cols: list[Column], col_vals: list[Any]
 #     ):
-#         stmt = select(self._schema)
+#         stmt = select(self.repo_schema)
 #         for i, col in enumerate(cols):
 #             stmt = stmt.filter(col == col_vals[i])
 #         db_models = session.execute(stmt).scalars().all()
@@ -101,7 +101,7 @@
 #         col_vals: list[Any],
 #     ):
 #         # Create a list of column objects based on the column names provided
-#         columns_to_select = [getattr(self._schema, col) for col in cols]
+#         columns_to_select = [getattr(self.repo_schema, col) for col in cols]
 
 #         # Start the query by selecting only the specified columns
 #         stmt = select(*columns_to_select)

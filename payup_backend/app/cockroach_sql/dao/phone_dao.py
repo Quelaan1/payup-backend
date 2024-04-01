@@ -19,20 +19,20 @@ class PhoneRepo:
     """crud on phones model"""
 
     def __init__(self):
-        self._schema = PhoneSchema
+        self.repo_schema = PhoneSchema
 
     async def get_objs(
         self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[PhoneModel]:
         """get phones list, paginated"""
-        stmt = select(self._schema).offset(skip).limit(limit)
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
         result = await session.execute(stmt)
         db_models = result.scalars().all()
         return [PhoneModel.model_validate(db_model) for db_model in db_models]
 
     async def get_obj(self, session: AsyncSession, obj_id: UUID):
         """get phone by primary key"""
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
         return PhoneModel.model_validate(db_model)
@@ -41,7 +41,9 @@ class PhoneRepo:
         self, session: AsyncSession, p_model: PhoneCreate
     ) -> PhoneModel:
         """create phone entity in db"""
-        db_model = self._schema(**p_model.model_dump(exclude=["m_pin"], by_alias=True))
+        db_model = self.repo_schema(
+            **p_model.model_dump(exclude=["m_pin"], by_alias=True)
+        )
         if p_model.m_pin is not None:
             db_model.set_password(p_model.m_pin.get_secret_value())
         logger.debug("db_model : %s", db_model)
@@ -59,8 +61,8 @@ class PhoneRepo:
         col_filters: Optional[list[tuple[Column, Any]]] = None,
     ):
         """update phone given its primary key and update model"""
-        # db_model = session.get(self._schema, obj_id)
-        stmt = select(self._schema).where(self._schema.id == obj_id)
+        # db_model = session.get(self.repo_schema, obj_id)
+        stmt = select(self.repo_schema).where(self.repo_schema.id == obj_id)
         if not col_filters is None:
             for col, val in col_filters:
                 stmt = stmt.where(col == val)
@@ -76,7 +78,7 @@ class PhoneRepo:
             setattr(db_model, key, value)
 
         if p_model.m_pin is not None:
-            db_model.pin = self._schema.get_hash_password(
+            db_model.pin = self.repo_schema.get_hash_password(
                 p_model.m_pin.get_secret_value()
             )
 
@@ -88,7 +90,7 @@ class PhoneRepo:
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes phone entity from db"""
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         await session.flush()
         logger.info("Rows updated: %s", result.rowcount)
@@ -97,7 +99,7 @@ class PhoneRepo:
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
         """filter phone table for list"""
-        stmt = select(self._schema)
+        stmt = select(self.repo_schema)
         for col, val in col_filters:
             stmt = stmt.where(col == val)
         result = await session.execute(stmt)
