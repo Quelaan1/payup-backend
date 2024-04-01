@@ -4,10 +4,12 @@ import logging
 from uuid import UUID
 from cryptography.fernet import Fernet
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
-from .model import KycBase, KycResponse, KycCreate, AadhaarKycResponse
+from .model import KycBase, KycResponse, KycCreate, AadhaarKycResponse, KycLookupCreate
 from ...cockroach_sql.dao.kyc_dao import KycEntityRepo
+from ...cockroach_sql.dao.kyc_lookup_dao import KycLookupRepo
 from ...cockroach_sql.database import database
 from ...cockroach_sql.db_enums import KycType
 from ...config.constants import get_settings
@@ -40,9 +42,12 @@ class KycService:
             conn_string {String} -- CockroachDB connection string.
         """
         self.engine = database.engine
-        self.sessionmaker = sessionmaker(bind=self.engine)
+        self.sessionmaker = sessionmaker(
+            bind=self.engine, class_=AsyncSession, expire_on_commit=False
+        )
 
         self._repo = KycEntityRepo()
+        self.look_repo = KycLookupRepo()
 
         self.sandbox_client = Sandbox(
             constants.SANDBOX.API_KEY, constants.SANDBOX.SECRET_KEY
@@ -141,20 +146,54 @@ class KycService:
             logger.info(verification)
 
             if verification.Data.Status.lower() == "valid":
+                # check data in db and create or retrieve
                 p_model = KycCreate(
                     entity_id=verification.Data.Pan,
                     entity_name=verification.Data.FullName,
                     entity_type=KycType.PAN,
-                    owner_id=owner_id,
                     verified=True,
+                    category=verification.Data.Category,
                 )
-                logger.info(p_model)
+
+                async with self.sessionmaker() as session:
+                    kyc_lookup = await self._repo.get_obj_by_filter(
+                        session=session,
+                        col_filters=[
+                            (self.look_repo._schema.entity_id, p_model.entity_id),
+                            (
+                                self.look_repo._schema.entity_type,
+                                p_model.entity_type.value,
+                            ),
+                        ],
+                    )
+                    if len(kyc_lookup) == 0:
+                        logger.info("no entry found for %s", p_model.entity_id)
+                        kyc = await self._repo.create_obj(
+                            session=session, p_model=p_model
+                        )
+                        kyc_lookup = await self.look_repo.create_obj(
+                            session=session,
+                            p_model=KycLookupCreate(
+                                entity_id=p_model.entity_id,
+                                entity_type=p_model.entity_type,
+                                kyc_entity_id=kyc.id,
+                            ),
+                        )
+                    else:
+                        logger.info("entry found for %s", p_model.entity_id)
+                        logger.info("# of records found %s", len(kyc_lookup))
+                        kyc = await self._repo.get_obj(
+                            session=session, obj_id=kyc_lookup[0].id
+                        )
+                    await session.commit()
+                logger.info(kyc)
 
             return KycResponse(
                 entity_id=verification.Data.Pan,
                 entity_type=KycType.PAN,
                 entity_name=verification.Data.FullName,
                 message=verification.Data.Status,
+                internal_id=kyc.id,
             )
 
         except Exception as err:

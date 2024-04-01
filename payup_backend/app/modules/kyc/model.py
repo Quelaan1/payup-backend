@@ -21,6 +21,31 @@ logger = logging.getLogger(__name__)
 constants = get_settings()
 
 
+class KycLookupBase(BaseModel):
+    """minimum item information"""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        revalidate_instances="always",
+        validate_assignment=True,
+        extra="ignore",
+        # use_enum_values=True,
+    )
+
+    entity_id: str
+    entity_type: KycType
+
+
+class KycLookupCreate(KycLookupBase):
+    """minimum item information"""
+
+    kyc_entity_id: UUID4
+
+
+class KycLookup(KycLookupCreate):
+    """minimum item information"""
+
+
 class KycBase(BaseModel):
     """minimum item information"""
 
@@ -39,12 +64,12 @@ class KycBase(BaseModel):
     def validate_entity_id(self):
         value1 = self.entity_id
         value2 = self.entity_type
-        if value2 == KycType.AADHAAR:
+        if value2 == KycType.AADHAAR and value1 is not None:
             pattern = r"^\d{12}$"
             if not bool(re.match(pattern, value1)):
                 raise ValueError("Invalid Aadhaar number. It must be 12 digits.")
 
-        if value2 == KycType.PAN:
+        if value2 == KycType.PAN and value1 is not None:
             pattern = r"^[A-Z]{5}[0-9]{4}[A-Z]$"
             if not bool(re.match(pattern, value1.upper())):
                 raise ValueError("Invalid Pan number. It must be ABCDE1234F 10 char.")
@@ -57,8 +82,12 @@ class KycUpdate(KycBase):
 
 
 class KycCreate(KycUpdate):
-    owner_id: UUID4
     entity_id_encrypted: Optional[bytes] = None
+    email: Optional[str] = None
+    gender: Optional[str] = None
+    pincode: Optional[str] = None
+    category: Optional[str] = None
+    status: Optional[str] = None
 
     @model_validator(mode="after")
     def set_encrypted_id(self):
@@ -81,7 +110,7 @@ class KycCreate(KycUpdate):
 
 
 class Kyc(KycUpdate):
-    owner_id: UUID4
+    id: UUID4
     entity_id_encrypted: Optional[bytes] = None
 
     @model_validator(mode="after")
@@ -103,6 +132,7 @@ class Kyc(KycUpdate):
 
 class KycResponse(BaseResponse, KycBase):
     entity_name: Optional[str] = None
+    internal_id: Optional[UUID4] = None
 
 
 class AadhaarKycRequest(BaseModel):

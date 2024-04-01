@@ -112,6 +112,19 @@ class UserKycRelation(Base):
     kyc_entities = relationship("KycEntity", back_populates="users")
 
 
+class KycLookup(Base):
+    __tablename__ = "kyc_lookups"
+    __table_args__ = {"schema": schema}
+
+    kyc_entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{schema}.kyc_entities.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    entity_type = Column(SmallInteger)
+    entity_id = Column(String, index=True, unique=True)
+
+
 class OtpEntity(Base):
     __tablename__ = "otps"
     __table_args__ = {"schema": schema}
