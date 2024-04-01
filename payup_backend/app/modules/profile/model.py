@@ -12,12 +12,20 @@ class ProfileBase(BaseModel):
     )
 
 
-class ProfileUpdate(ProfileBase):
+class ProfileUpdateRequest(ProfileBase):
     """profile update request model"""
 
     email: Annotated[Optional[EmailStr], Field(None, examples=list("dummy@email.com"))]
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+
+
+class ProfileUpdate(ProfileUpdateRequest):
+    """profile update request model"""
+
+    kyc_pan: Optional[bool] = None
+    kyc_uidai: Optional[bool] = None
+    kyc_complete: Optional[bool] = None
 
 
 class ProfileCreate(ProfileUpdate):
@@ -33,3 +41,5 @@ class Profile(ProfileBase):
     last_name: Optional[str] = None
     onboarded: bool
     kyc_complete: bool
+    kyc_pan: bool
+    kyc_uidai: bool

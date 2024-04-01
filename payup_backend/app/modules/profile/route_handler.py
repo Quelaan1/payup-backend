@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, status, Depends, HTTPException
 
 from .model import (
-    ProfileUpdate as ProfileUpdateRequest,
+    ProfileUpdateRequest,
     Profile as ProfileResponse,
 )
 from .service import ProfileService

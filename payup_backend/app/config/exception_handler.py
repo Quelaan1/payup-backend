@@ -21,7 +21,13 @@ class CustomExceptionHandler:
 
     @classmethod
     def http_exception_handler(cls, request: Request, exc: HTTPException):
-        msg = exc.detail
+        logger.info("%s", exc.detail)
+        if isinstance(exc.detail, str):
+            msg = exc.detail
+        elif isinstance(exc.detail, tuple):
+            msg = ""
+            for i, data in enumerate(exc.detail):
+                msg = msg + ": " * (i > 0) + str(data)
         logger.info("Http exception Error : %s", exc)
 
         detail = BaseResponse(message=msg).model_dump()

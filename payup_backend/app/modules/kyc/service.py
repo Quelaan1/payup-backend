@@ -7,18 +7,28 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
-from .model import KycBase, KycResponse, KycCreate, AadhaarKycResponse, KycLookupCreate
+from .model import (
+    KycBase,
+    KycResponse,
+    KycCreate,
+    AadhaarKycResponse,
+    KycLookupCreate,
+    KycCreateRequest,
+    UserKycRelationBase,
+)
 from ...cockroach_sql.dao.kyc_dao import KycEntityRepo
 from ...cockroach_sql.dao.kyc_lookup_dao import KycLookupRepo
+from ...cockroach_sql.dao.kyc_user_dao import UserKycRelationRepo
+from ...cockroach_sql.dao.profile_dao import ProfileRepo
+from ...cockroach_sql.dao.user_dao import UserRepo
 from ...cockroach_sql.database import database
 from ...cockroach_sql.db_enums import KycType
 from ...config.constants import get_settings
 from .pan.pan_model import (
-    PANVerifyResponseSchema,
-    PANVerifyRequestSchema,
     AadhaarVerifyRequestSchema,
     AadhaarOtpRequestSchema,
 )
+from ..profile.model import ProfileUpdate, Profile as ProfileResponse
 from ...helperClass.verifications.kyc_pan.sandbox import Sandbox
 
 # from ...dependency import authentication
@@ -47,7 +57,10 @@ class KycService:
         )
 
         self._repo = KycEntityRepo()
-        self.look_repo = KycLookupRepo()
+        self.lookup_repo = KycLookupRepo()
+        self.relational_repo = UserKycRelationRepo()
+        self.profile_repo = ProfileRepo()
+        self.user_repo = UserRepo()
 
         self.sandbox_client = Sandbox(
             constants.SANDBOX.API_KEY, constants.SANDBOX.SECRET_KEY
@@ -159,9 +172,9 @@ class KycService:
                     kyc_lookup = await self._repo.get_obj_by_filter(
                         session=session,
                         col_filters=[
-                            (self.look_repo._schema.entity_id, p_model.entity_id),
+                            (self.lookup_repo._schema.entity_id, p_model.entity_id),
                             (
-                                self.look_repo._schema.entity_type,
+                                self.lookup_repo._schema.entity_type,
                                 p_model.entity_type.value,
                             ),
                         ],
@@ -171,7 +184,7 @@ class KycService:
                         kyc = await self._repo.create_obj(
                             session=session, p_model=p_model
                         )
-                        kyc_lookup = await self.look_repo.create_obj(
+                        kyc_lookup = await self.lookup_repo.create_obj(
                             session=session,
                             p_model=KycLookupCreate(
                                 entity_id=p_model.entity_id,
@@ -265,21 +278,69 @@ class KycService:
                 detail=f"{err.args}",
             ) from err
 
-    async def create_kyc(self, kyc_data: KycCreate) -> KycResponse:
+    async def create_kyc(
+        self, kyc_data: KycCreateRequest, profile_id: UUID
+    ) -> ProfileResponse:
         """validate an access token"""
         try:
+            if kyc_data.entity_type == KycType.PAN:
+                logger.info("attaching: %s", kyc_data.entity_type.name)
+                async with self.sessionmaker() as session:
+                    kyc_lookup = await self.lookup_repo.get_obj_by_filter(
+                        session=session,
+                        col_filters=[
+                            (self.lookup_repo._schema.entity_id, kyc_data.entity_id),
+                            (
+                                self.lookup_repo._schema.entity_type,
+                                kyc_data.entity_type.value,
+                            ),
+                            (
+                                self.lookup_repo._schema.kyc_entity_id,
+                                kyc_data.internal_id,
+                            ),
+                        ],
+                    )
+                    if len(kyc_lookup) == 0:
+                        logger.info("no entry found for %s", kyc_data.entity_id)
+                        raise HTTPException(
+                            detail="wrong kyc data sent, conflict with stored info",
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                        )
+
+                    logger.info("entry found for %s", kyc_data.entity_id)
+                    logger.info("# of records found %s", len(kyc_lookup))
+                    # create association
+                    user_list = await self.user_repo.get_obj_by_filter(
+                        session=session,
+                        col_filters=[(self.user_repo._schema.profile_id, profile_id)],
+                    )
+                    kyc_relation = await self.relational_repo.get_or_create_obj(
+                        session=session,
+                        kyc_id=kyc_data.internal_id,
+                        user_id=user_list[0].id,
+                    )
+                    profile = await self.profile_repo.update_obj(
+                        session=session,
+                        obj_id=profile_id,
+                        p_model=ProfileUpdate(kyc_pan=True),
+                    )
+                    await session.commit()
+                logger.info(kyc_relation)
+                logger.info(profile)
+                return profile
             if kyc_data.entity_type == KycType.AADHAAR:
                 logger.info("checking: %s", kyc_data.entity_type.name)
                 raise HTTPException(
                     status_code=status.HTTP_501_NOT_IMPLEMENTED,
                     detail="aadhaar not implemented",
                 )
-            if kyc_data.entity_type == KycType.GSTN:
-                logger.info("checking: %s", kyc_data.entity_type.name)
-                raise HTTPException(
-                    status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                    detail=f"{kyc_data.entity_type.name} not implemented",
-                )
+            # if kyc_data.entity_type == KycType.GSTN:
+            logger.info("checking: %s", kyc_data.entity_type.name)
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail=f"{kyc_data.entity_type.name} not implemented",
+            )
+
         except Exception as err:
             logger.error(err.args)
             raise HTTPException(

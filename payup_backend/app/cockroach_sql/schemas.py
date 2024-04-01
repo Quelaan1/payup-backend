@@ -70,6 +70,8 @@ class Profile(Base):
     first_name = Column(String)
     last_name = Column(String)
     kyc_complete = Column(Boolean, default=False)
+    kyc_pan = Column(Boolean, default=False)
+    kyc_uidai = Column(Boolean, default=False)
     onboarded = Column(Boolean, default=False)
 
 

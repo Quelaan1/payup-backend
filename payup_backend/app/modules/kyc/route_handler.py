@@ -9,9 +9,11 @@ from .model import (
     KycBase,
     KycResponse,
     KycCreate,
+    KycCreateRequest,
     AadhaarKycResponse,
     AadhaarKycRequest,
 )
+from ..profile.model import Profile as ProfileResponse
 from ...cockroach_sql.db_enums import KycType
 from ...dependency.authentication import UserClaim, JWTAuth
 
@@ -57,7 +59,7 @@ class KycHandler:
         self.router.add_api_route(
             "/pan",
             endpoint=self.create_kyc_endpoint,
-            response_model=KycResponse,
+            response_model=ProfileResponse,
             status_code=status.HTTP_201_CREATED,
             methods=["POST"],
             response_model_exclude_none=True,
@@ -120,11 +122,13 @@ class KycHandler:
 
     async def create_kyc_endpoint(
         self,
-        req_body: KycCreate,
+        req_body: KycCreateRequest,
         token_user: Annotated[UserClaim, Depends(JWTAuth.get_current_user)],
     ):
         logger.info(token_user.model_dump())
-        res_body = await self.kyc_service.create_kyc(kyc_data=req_body)
+        res_body = await self.kyc_service.create_kyc(
+            kyc_data=req_body, profile_id=token_user.profile_id
+        )
         logger.info(res_body.model_dump())
         return res_body
 

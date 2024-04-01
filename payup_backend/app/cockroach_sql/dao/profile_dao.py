@@ -80,8 +80,8 @@ class ProfileRepo:
 
         session.add(db_model)
         await session.flush()
-        session.refresh(db_model)
-        return db_model
+        await session.refresh(db_model)
+        return ProfileModel.model_validate(db_model)
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes profile entity from db"""

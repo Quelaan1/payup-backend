@@ -21,6 +21,21 @@ logger = logging.getLogger(__name__)
 constants = get_settings()
 
 
+class UserKycRelationBase(BaseModel):
+    """minimum item information"""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        revalidate_instances="always",
+        validate_assignment=True,
+        extra="ignore",
+        # use_enum_values=True,
+    )
+
+    kyc_id: UUID4
+    user_id: UUID4
+
+
 class KycLookupBase(BaseModel):
     """minimum item information"""
 
@@ -133,6 +148,23 @@ class Kyc(KycUpdate):
 class KycResponse(BaseResponse, KycBase):
     entity_name: Optional[str] = None
     internal_id: Optional[UUID4] = None
+
+
+class KycCreateRequest(BaseModel):
+    """request body to connect kycs"""
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        revalidate_instances="always",
+        validate_assignment=True,
+        extra="ignore",
+        # use_enum_values=True,
+    )
+
+    entity_id: str
+    entity_type: KycType
+    entity_name: str
+    internal_id: UUID4
 
 
 class AadhaarKycRequest(BaseModel):
