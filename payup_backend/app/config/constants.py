@@ -62,6 +62,7 @@ class CockroachSettings(BaseSettings):
     CLUSTER: str
     DB: str
     DB_URI: str
+    CERT_PATH: str
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="cockroach_", extra="ignore"

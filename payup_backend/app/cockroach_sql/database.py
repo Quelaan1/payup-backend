@@ -33,47 +33,37 @@ class Database(object):
 
         if self._engine is None:
             self._db = config.COCKROACH.DB
-            conn_str = f"cockroachdb+asyncpg://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}?sslmode=verify-full"
+
             base_conn_str = f"cockroachdb+asyncpg://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}"
 
             if config.ENV == "local":
                 # Set up the SSL context
-                appdata = os.getenv("APPDATA")
                 ssl_context = ssl.create_default_context(
-                    cafile=f"{appdata}/postgresql/root.crt"
-                )
-                ssl_context.check_hostname = (
-                    False  # Adjust based on your SSL config needs
-                )
-                ssl_context.verify_mode = ssl.CERT_REQUIRED
-
-                # Append asyncpg-specific SSL parameters to the connection string
-                conn_str = f"{base_conn_str}?ssl=true"
-                self._engine = create_async_engine(
-                    conn_str,
-                    connect_args={"ssl": ssl_context},
-                    pool_pre_ping=True,
-                    pool_recycle=1800,
-                    pool_size=5,
+                    cafile=config.COCKROACH.CERT_PATH
                 )
             elif config.ENV == "prod":
-
                 # Write the certificate content to a temporary file
                 cert_file_path = tempfile.mktemp(suffix=".crt")
                 with open(cert_file_path, "w") as cert_file:
                     cert_file.write(get_db_cert())
 
-                conn_str = conn_str + f"&sslrootcert={cert_file_path}"
+                ssl_context = ssl.create_default_context(cafile=cert_file_path)
 
-                self._engine = create_async_engine(
-                    conn_str,
-                    pool_pre_ping=True,
-                    pool_recycle=1800,
-                    pool_use_lifo=True,
-                    pool_size=5,
-                )
             else:
                 raise ValueError("environment value can be either local or prod")
+
+            ssl_context.check_hostname = False  # Adjust based on your SSL config needs
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
+
+            # Append asyncpg-specific SSL parameters to the connection string
+            conn_str = f"{base_conn_str}?ssl=true"
+            self._engine = create_async_engine(
+                conn_str,
+                connect_args={"ssl": ssl_context},
+                pool_pre_ping=True,
+                pool_recycle=1800,
+                pool_size=5,
+            )
         return self._engine
 
     async def get_session(self) -> AsyncSession:
