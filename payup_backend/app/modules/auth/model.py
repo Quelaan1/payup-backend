@@ -107,7 +107,7 @@ class OAuth2PinRequestForm:
                 """
             ),
         ] = None,
-        phonenumber: Annotated[
+        phone_number: Annotated[
             str,
             Form(),
             Doc(
@@ -129,5 +129,5 @@ class OAuth2PinRequestForm:
         ],
     ):
         self.grant_type = grant_type
-        self.phonenumber = phonenumber
+        self.phone_number = phone_number
         self.pin = pin

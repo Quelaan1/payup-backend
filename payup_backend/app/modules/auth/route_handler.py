@@ -81,7 +81,7 @@ class AuthHandler:
 
     async def verify_otp_endpoint(self, form_data: OAuth2PinRequestForm = Depends()):
         otp_verify = OTPVerifyRequest(
-            otp=form_data.pin, phone_number=form_data.phonenumber
+            otp=form_data.pin, phone_number=form_data.phone_number
         )
         profile_data = await self.auth_service.verify_otp(
             otp_verify.phone_number, otp_verify.otp
