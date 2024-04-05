@@ -196,7 +196,7 @@ class KycService:
                         logger.info("entry found for %s", p_model.entity_id)
                         logger.info("# of records found %s", len(kyc_lookup_list))
                         kyc = await self._repo.get_obj(
-                            session=session, obj_id=kyc_lookup_list[0].id
+                            session=session, obj_id=kyc_lookup_list[0].kyc_entity_id
                         )
                     await session.commit()
                 logger.info(kyc)
