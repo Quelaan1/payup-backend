@@ -74,6 +74,8 @@ class Profile(Base):
     kyc_uidai = Column(Boolean, default=False)
     onboarded = Column(Boolean, default=False)
 
+    payee_entities = relationship("ProfilePayeeRelation", back_populates="profiles")
+
 
 class KycEntity(Base):
     __tablename__ = "kyc_entities"
@@ -125,6 +127,40 @@ class KycLookup(Base):
     )
     entity_type = Column(SmallInteger)
     entity_id = Column(String, index=True, unique=True)
+
+
+class PayeeEntity(Base):
+    __tablename__ = "payee_entities"
+    __table_args__ = {"schema": schema}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    b_account = Column(String)
+    ifsc = Column(String)
+    nickname = Column(String, nullable=True)
+    name = Column(String)
+
+    # Define the relationship to Profile through the association table
+    profiles = relationship("ProfilePayeeRelation", back_populates="payee_entities")
+
+
+# Association table for the many-to-many relationship
+class ProfilePayeeRelation(Base):
+    __tablename__ = "profile_payee_relations"
+    __table_args__ = {"schema": schema}
+
+    payee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{schema}.payee_entities.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    profile_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{schema}.profiles.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+    profiles = relationship("Profile", back_populates="payee_entities")
+    payee_entities = relationship("PayeeEntity", back_populates="profiles")
 
 
 class OtpEntity(Base):
