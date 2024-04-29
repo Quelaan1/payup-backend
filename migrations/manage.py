@@ -107,8 +107,8 @@ def main():
     finally:
         # Whether successful or not, tear down the containers
         print("Tearing down Docker containers...")
-        teardown_output = docker_compose_down()
-        print(teardown_output)
+        # teardown_output = docker_compose_down()
+        # print(teardown_output)
 
 
 if __name__ == "__main__":

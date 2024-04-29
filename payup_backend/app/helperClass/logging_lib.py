@@ -43,8 +43,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         response_time = finish_time - start_time
 
         # Log request and response details
-        self.log_request(request, request_id)
-        self.log_response(response, response_time, request_id)
+        if config.ENV == "prod":
+            self.logger.info(f"Response Time: {response_time:.4f}s")
+        else:
+            self.log_request(request, request_id)
+            self.log_response(response, response_time, request_id)
 
         return response
 

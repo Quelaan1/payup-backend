@@ -3,8 +3,13 @@ import enum
 
 class KycType(enum.Enum):
     PAN = 1
-    AADHAR = 2
+    AADHAAR = 2
     GSTN = 3
+
+
+class UserType(enum.Enum):
+    USER = 1
+    ADMIN = 2
 
 
 def get_kyc_type_name(kyc_type_value: int):

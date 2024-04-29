@@ -4,31 +4,20 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class PANVerifyRequestSchema(BaseModel):
     pan_number: str
+    name: str
+    consent: str
+    dob: str
 
 
 class PANVerifyResponseSchema(BaseModel):
     message: str
+    name: Optional[str] = None
 
 
-class PANVerifiedUserData(BaseModel):
-    """user data received from sandbox pan-verification api"""
-
-    Entity: str = Field(..., alias="@entity")
-    Pan: str = Field(..., alias="pan")
-    FullName: str = Field(..., alias="full_name")
-    Status: str = Field(..., alias="status")
-    Category: str = Field(..., alias="category")
-
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+class AadhaarOtpRequestSchema(BaseModel):
+    aadhaar_number: str = Field(..., max_length=12, min_length=12, pattern=r"^\d{12}$")
 
 
-class SandboxPANVerifyResponse(BaseModel):
-    """response from sandbox pan-verification api"""
-
-    Code: int = Field(..., alias="code")
-    Data: Optional[PANVerifiedUserData] = Field(None, alias="data")
-    Message: Optional[str] = Field(None, alias="message")
-    Timestamp: int = Field(..., alias="timestamp")
-    TransactionId: int = Field(..., alias="transaction_id")
-
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+class AadhaarVerifyRequestSchema(BaseModel):
+    otp: str
+    ref_id: str

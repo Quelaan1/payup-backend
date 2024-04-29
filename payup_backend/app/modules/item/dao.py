@@ -1,6 +1,6 @@
 from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy import select, insert, delete, update, Connection
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, insert, delete, update
 
 from .model import ItemCreate, ItemUpdate, Item as ItemModel
 from ...cockroach_sql.schemas import Item as ItemSchema
@@ -8,47 +8,43 @@ from ...cockroach_sql.schemas import Item as ItemSchema
 
 class ItemRepo:
     def __init__(self):
-        self._schema = ItemSchema
+        self.repo_schema = ItemSchema
 
-    def get_objs(
-        self, session: Session, skip: int = 0, limit: int = 100
+    async def get_objs(
+        self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[ItemModel]:
-        stmt = select(self._schema).offset(skip).limit(limit)
-        db_models = session.execute(stmt).scalars().all()
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [ItemModel.model_validate(item) for item in db_models]
 
-    def create_obj(self, session: Session, p_model: ItemCreate, user_id: UUID) -> None:
-        # stmt = insert(ItemSchema).values(**p_model.model_dump(), owner_id=user_id)
-        db_model = self._schema(**p_model.model_dump(), owner_id=user_id)
-        session.add(db_model)
-
-    def create_user_item_2(
-        self, conn: Connection, p_model: ItemCreate, user_id: UUID
+    async def create_obj(
+        self, session: AsyncSession, p_model: ItemCreate, user_id: UUID
     ) -> None:
-        db_model = self._schema(**p_model.model_dump(), owner_id=user_id)
+        # stmt = insert(ItemSchema).values(**p_model.model_dump(), owner_id=user_id)
+        db_model = self.repo_schema(**p_model.model_dump(), owner_id=user_id)
+        await session.add(db_model)
 
-        # Prepare the insert statement
-        stmt = insert(self._schema).values(**db_model.__dict__)
-        # Execute the statement directly using the connection
-        conn.execute(stmt)
-
-    def get_obj(self, session: Session, obj_id: UUID):
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
-        db_model = session.execute(stmt).scalars().first()
+    async def get_obj(self, session: AsyncSession, obj_id: UUID):
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
         return ItemModel.model_validate(db_model) if db_model else None
 
-    def update_obj(self, session: Session, obj_id: UUID, p_model: ItemUpdate) -> None:
+    async def update_obj(
+        self, session: AsyncSession, obj_id: UUID, p_model: ItemUpdate
+    ) -> None:
         stmt = (
-            update(self._schema)
-            .where(self._schema.id == obj_id)
+            update(self.repo_schema)
+            .where(self.repo_schema.id == obj_id)
             .values(**p_model.model_dump(exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
-        session.execute(stmt)
+        await session.execute(stmt)
 
-    def delete_obj(self, session: Session, obj_id: UUID) -> None:
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
-        session.execute(stmt)
+    async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
+        await session.execute(stmt)
 
 
 # stmt = delete(user_table).where(user_table.c.id == 5)

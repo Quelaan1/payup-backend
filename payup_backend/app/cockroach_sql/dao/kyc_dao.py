@@ -1,72 +1,112 @@
+"""kyc_entity crud to database"""
+
 import logging
 from uuid import UUID
 from typing import Any
-from sqlalchemy.orm import Session
-from sqlalchemy import select, insert, delete, update, Connection, Column
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete, update, Column
 
-from ...modules.kyc.model import KycBase, KycCreate, KycUpdate, Kyc as KycModel
-from ..schemas import pwd_context, KycEntity as KycEntitySchema
-from ..db_enums import get_kyc_type_from_string
+from ...modules.kyc.model import KycCreate, KycUpdate, Kyc as KycModel
+from ..schemas import KycEntity as KycEntitySchema
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(lineno)d | %(filename)s : %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 
 class KycEntityRepo:
+    """crud on kyc_entities model"""
 
     def __init__(self):
-        self._schema = KycEntitySchema
+        self.repo_schema = KycEntitySchema
 
-    def get_objs(
-        self, session: Session, skip: int = 0, limit: int = 100
+    async def get_objs(
+        self, session: AsyncSession, skip: int = 0, limit: int = 100
     ) -> list[KycModel]:
-        stmt = select(self._schema).offset(skip).limit(limit)
-        db_models = session.execute(stmt).scalars().all()
+        """get kyc_entities list, paginated"""
+        stmt = select(self.repo_schema).offset(skip).limit(limit)
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [KycModel.model_validate(db_model) for db_model in db_models]
 
-    def get_obj(self, session: Session, obj_id: UUID):
-        stmt = select(self._schema).filter(self._schema.id == obj_id)
-        db_model = session.execute(stmt).scalars().first()
-        return KycModel.model_validate(db_model) if db_model else None
+    async def get_obj(self, session: AsyncSession, obj_id: UUID):
+        """get kyc_entity by primary key"""
+        stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
+        return KycModel.model_validate(db_model)
 
-    def create_obj(self, session: Session, p_model: KycCreate) -> KycModel:
-        # stmt = insert(KycSchema).values(**p_model.model_dump(), owner_id=user_id)
-        db_model = self._schema(
-            **p_model.model_dump()
-            # ** p_model.model_dump(exclude=["entity_type"]),
-            # entity_type=get_kyc_type_from_string(p_model.entity_type)
+    async def get_or_create_obj(
+        self, session: AsyncSession, p_model: KycCreate
+    ) -> KycModel:
+        """Get or create a KYC entity in db."""
+        unique_identifier = (
+            p_model.entity_id_encrypted
+        )  # Assuming `id` is the unique identifier for KycEntity
+        stmt = (
+            select(self.repo_schema)
+            .where(self.repo_schema.entity_id_encrypted == unique_identifier)
+            .where(self.repo_schema.entity_type == p_model.entity_type.value)
         )
-        logger.info("db_model : %s", db_model)
-        session.add(db_model)
-        session.commit()
-        session.refresh(db_model)
+        result = await session.execute(stmt)
+        db_model = result.scalars().first()
+
+        if db_model is None:
+            # The record does not exist, create a new one
+            return await self.create_obj(session=session, p_model=p_model)
 
         p_resp = KycModel.model_validate(db_model)
         logger.info("[response]-[%s]", p_resp.model_dump())
-
         return p_resp
 
-    def update_obj(self, session: Session, obj_id: UUID, p_model: KycUpdate) -> None:
+    async def create_obj(self, session: AsyncSession, p_model: KycCreate) -> KycModel:
+        """create kyc_entity in db"""
+        try:
+            db_model = self.repo_schema(
+                **p_model.model_dump(
+                    exclude=["entity_id", "entity_type"], by_alias=True
+                )
+            )
+            db_model.entity_type = p_model.entity_type.value
+            logger.info("db_model : %s", db_model)
+            session.add(db_model)
+            await session.flush()
+            await session.refresh(db_model)
+            p_resp = KycModel.model_validate(db_model)
+            logger.info("[response]-[%s]", p_resp.model_dump())
+            return p_resp
+        except Exception as e:
+            logger.error("%s", e)
+            raise e
+
+    async def update_obj(
+        self, session: AsyncSession, obj_id: UUID, p_model: KycUpdate
+    ) -> None:
+        """update kyc_entity gives its primary key and update model"""
         stmt = (
-            update(self._schema)
-            .where(self._schema.id == obj_id)
-            .values(**p_model.model_dump(exclude_unset=True))
+            update(self.repo_schema)
+            .where(self.repo_schema.id == obj_id)
+            .values(**p_model.model_dump(exclude=["entity_id"], exclude_unset=True))
             .execution_options(synchronize_session="fetch")
         )
-        session.execute(stmt)
+        result = await session.execute(stmt)
+        await session.flush()
 
-    def delete_obj(self, session: Session, obj_id: UUID) -> None:
-        stmt = delete(self._schema).where(self._schema.id == obj_id)
-        session.execute(stmt)
+        logger.info("Rows updated: %s", result.rowcount)
+        result.close()
 
-    def get_obj_by_filter(
-        self, session: Session, cols: list[Column], col_vals: list[Any]
+    async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
+        """deletes kyc_entity from db"""
+        stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
+        result = await session.execute(stmt)
+        await session.flush()
+        logger.info("Rows updated: %s", result.rowcount)
+
+    async def get_obj_by_filter(
+        self, session: AsyncSession, col_filters: list[tuple[Column, Any]]
     ):
-        stmt = select(self._schema)
-        for i, col in enumerate(cols):
-            stmt = stmt.filter(col == col_vals[i])
-        db_models = session.execute(stmt).scalars().all()
+        """filter kyc_entities table for list"""
+        stmt = select(self.repo_schema)
+        for col, val in col_filters:
+            stmt = stmt.where(col == val)
+        result = await session.execute(stmt)
+        db_models = result.scalars().all()
         return [KycModel.model_validate(db_model) for db_model in db_models]

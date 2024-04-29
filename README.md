@@ -1,6 +1,5 @@
 # payup-backend
 
-
 # step 1: install poetry globally
 
 install poetry
@@ -17,15 +16,11 @@ optional: to create venv in project root
 poetry config virtualenvs.in-project true
 ```
 
-
-
 run from folder root : will create virtual environment in the project root
 
 ```ps
 poetry install
 ```
-
-
 
 ### create .env file and copy pastr from .env.sample
 
@@ -46,3 +41,21 @@ run in a separate terminal B
 ```ps
 uvicorn payup_backend.main:app --reload
 ```
+
+</br>
+
+# Endpoints
+
+- one account per phone number
+- search for phone in database  if exists already complete kyc : no need as transaction would be protected at transaction level.
+- need access protection at user information level:
+    - phone pin
+    - biometric
+- verifying:
+    - create new account if no account attached, else send user info.
+
+</br>
+
+## /auth/otp - endpoint
+
+- update otp if phone already exist

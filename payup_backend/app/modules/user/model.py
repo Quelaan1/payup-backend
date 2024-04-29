@@ -1,42 +1,41 @@
-from typing import Optional, Annotated
-from pydantic import BaseModel, UUID4, Field, ConfigDict, EmailStr, SecretStr
+"""application user validation models"""
 
-# from ..kyc.model import Kyc as KycModel
+from typing import Optional
+from pydantic import BaseModel, UUID4, ConfigDict
+
+from ...cockroach_sql.db_enums import UserType
 
 
 class UserBase(BaseModel):
     """minimum user information"""
 
     model_config = ConfigDict(
-        from_attributes=True, revalidate_instances="always", validate_assignment=True
+        from_attributes=True,
+        revalidate_instances="always",
+        validate_assignment=True,
+        use_enum_values=True,
     )
-
-    phone_number: str
 
 
 class UserUpdate(UserBase):
-    email: Annotated[Optional[EmailStr], Field(None, examples=list("dummy@email.com"))]
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    m_pin: Optional[SecretStr] = None
+    """user update model to pass to dao"""
+
+    phone_lock: Optional[bool] = None
+    is_active: Optional[bool] = None
 
 
 class UserCreate(UserUpdate):
-    pass
+    """user create model to be passed to user_dao"""
+
+    user_type: UserType
+    profile_id: UUID4
 
 
 class User(UserBase):
+    """user model returned from user_dao"""
+
     id: UUID4
     is_active: bool
-    email: Annotated[Optional[EmailStr], Field(None, examples=list("dummy@email.com"))]
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    onboarded: bool
-    kyc_complete: bool
-    # kycs: Optional[list[KycModel]] = []
-
-
-# data = dict(
-#     list_of_ints=["1", 2, "bad"],
-#     a_float="not a float",
-# )
+    phone_lock: bool
+    user_type: int
+    profile_id: UUID4
