@@ -60,6 +60,8 @@ class Sandbox:
             raise HTTPException(
                 detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from e
+        finally:
+            response.close()
 
     async def refresh_token(self, code: Optional[int] = None):
         if not self.access_token or code is None:
@@ -94,17 +96,11 @@ class Sandbox:
             raise HTTPException(
                 detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from e
+        finally:
+            response.close()
 
     async def verifyPan(self, pan_data: SandboxPANVerifyData):
-        if not self.access_token:
-            await self.authenticate()
 
-            if not self.access_token:
-                logger.error("Authentication failed. Cannot verify PAN.")
-                raise HTTPException(
-                    detail="Authentication failed. Cannot verify PAN.",
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
         url = f"{self._base_url}/kyc/pan/verify"
         headers = {
             "accept": "application/json",
@@ -142,17 +138,11 @@ class Sandbox:
             message = data.get("message", "No message found")
             logger.error("Message: %s", message)
             raise HTTPException(detail=message, status_code=response.status_code) from e
+        finally:
+            response.close()
 
     async def old_verifyPan(self, pan_number):
-        if not self.access_token:
-            await self.authenticate()
 
-            if not self.access_token:
-                logger.error("Authentication failed. Cannot verify PAN.")
-                raise HTTPException(
-                    detail="Authentication failed. Cannot verify PAN.",
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
         url = f"{self._base_url}/pans/{pan_number}/verify?consent=y&reason=For%20KYC%20of%20User"
         headers = {
             "accept": "application/json",
@@ -184,17 +174,10 @@ class Sandbox:
             raise HTTPException(
                 detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from e
+        finally:
+            response.close()
 
     async def otpAadhaar(self, body: AadhaarOtpRequestSchema):
-        if not self.access_token:
-            await self.authenticate()
-
-            if not self.access_token:
-                logger.error("Authentication failed. Cannot verify PAN.")
-                raise HTTPException(
-                    detail="Authentication failed. Cannot verify PAN.",
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
 
         url = f"{self._base_url}/kyc/aadhaar/okyc/otp"
 
@@ -232,17 +215,11 @@ class Sandbox:
             raise HTTPException(
                 detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from e
+        finally:
+            response.close()
 
     async def verifyAadhaar(self, body: AadhaarVerifyRequestSchema):
-        if not self.access_token:
-            await self.authenticate()
 
-            if not self.access_token:
-                logger.error("Authentication failed. Cannot verify PAN.")
-                raise HTTPException(
-                    detail="Authentication failed. Cannot verify PAN.",
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
         url = f"{self._base_url}/kyc/aadhaar/okyc/otp/verify"
 
         headers = {
@@ -296,6 +273,8 @@ class Sandbox:
             raise HTTPException(
                 detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from e
+        finally:
+            response.close()
 
 
 # Usage
