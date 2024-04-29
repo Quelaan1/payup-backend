@@ -26,6 +26,7 @@ class ProfileUpdate(ProfileUpdateRequest):
     kyc_pan: Optional[bool] = None
     kyc_uidai: Optional[bool] = None
     kyc_complete: Optional[bool] = None
+    onboarded: Optional[bool] = None
 
 
 class ProfileCreate(ProfileUpdate):

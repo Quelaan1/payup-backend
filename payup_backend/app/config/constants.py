@@ -2,8 +2,8 @@
 
 import os
 from functools import lru_cache
-from typing import Any, Union
-from pydantic import model_validator, SecretStr
+from typing import Any, Union, Optional
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -62,7 +62,7 @@ class CockroachSettings(BaseSettings):
     CLUSTER: str
     DB: str
     DB_URI: str
-    CERT_PATH: str
+    CERT_PATH: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="cockroach_", extra="ignore"

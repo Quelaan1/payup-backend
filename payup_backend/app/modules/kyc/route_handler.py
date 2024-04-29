@@ -9,8 +9,9 @@ from .model import (
     KycBase,
     KycResponse,
     KycCreateRequest,
-    AadhaarKycResponse,
-    AadhaarKycRequest,
+    KycPanVerifyRequest,
+    KycAadhaarResponse,
+    KycAadhaarRequest,
 )
 from ..profile.model import Profile as ProfileResponse
 from ...cockroach_sql.db_enums import KycType
@@ -42,7 +43,7 @@ class KycHandler:
         self.router.add_api_route(
             "/aadhaar/otp",
             endpoint=self.send_aadhaar_otp_endpoint,
-            response_model=AadhaarKycResponse,
+            response_model=KycAadhaarResponse,
             status_code=status.HTTP_200_OK,
             methods=["POST"],
             response_model_exclude_none=True,
@@ -78,14 +79,18 @@ class KycHandler:
 
     async def verify_kyc_pan_endpoint(
         self,
-        req_body: KycBase,
+        req_body: KycPanVerifyRequest,
         token_user: Annotated[UserClaim, Depends(JWTAuth.get_current_user)],
     ):
 
         if req_body.entity_type != KycType.PAN:
             raise ValueError("Wrong entity_type.")
         res_body = await self.kyc_service.pan_verify(
-            owner_id=token_user.profile_id, pan_id=req_body.entity_id
+            owner_id=token_user.profile_id,
+            pan_id=req_body.entity_id,
+            consent=req_body.consent,
+            dob=req_body.dob,
+            name=req_body.name,
         )
         logger.info(res_body.model_dump())
         return res_body
@@ -106,7 +111,7 @@ class KycHandler:
 
     async def check_aadhaar_otp_endpoint(
         self,
-        req_body: AadhaarKycRequest,
+        req_body: KycAadhaarRequest,
         token_user: Annotated[UserClaim, Depends(JWTAuth.get_current_user)],
     ):
         logger.info(token_user.model_dump())
@@ -114,7 +119,7 @@ class KycHandler:
             profile_id=token_user.profile_id,
             otp=req_body.otp,
             ref_id=req_body.ref_id,
-            aadhaar_number=req_body.aadhaar_number,
+            aadhaar_number=req_body.entity_id,
         )
         logger.info(res_body.model_dump())
         return res_body

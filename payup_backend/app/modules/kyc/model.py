@@ -91,6 +91,12 @@ class KycBase(BaseModel):
         return self
 
 
+class KycPanVerifyRequest(KycBase):
+    name: str
+    consent: str
+    dob: str
+
+
 class KycUpdate(KycBase):
     verified: Optional[bool] = None
     entity_name: Optional[str] = None
@@ -148,6 +154,8 @@ class Kyc(KycUpdate):
 class KycResponse(BaseResponse, KycBase):
     entity_name: Optional[str] = None
     internal_id: Optional[UUID4] = None
+    name_as_per_pan_match: Optional[bool] = None
+    date_of_birth_match: Optional[bool] = None
 
 
 class KycCreateRequest(BaseModel):
@@ -167,7 +175,7 @@ class KycCreateRequest(BaseModel):
     internal_id: UUID4
 
 
-class AadhaarKycRequest(BaseModel):
+class KycAadhaarRequest(KycBase):
     """minimum item information"""
 
     model_config = ConfigDict(
@@ -177,8 +185,7 @@ class AadhaarKycRequest(BaseModel):
     )
     ref_id: str
     otp: str
-    aadhaar_number: str = Field(..., pattern="^\d{12}$")
 
 
-class AadhaarKycResponse(BaseResponse):
+class KycAadhaarResponse(BaseResponse):
     ref_id: Optional[str] = None

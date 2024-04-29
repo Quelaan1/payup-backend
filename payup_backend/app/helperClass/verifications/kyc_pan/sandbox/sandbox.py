@@ -5,14 +5,17 @@ import requests
 from typing import Optional
 from fastapi import HTTPException, status
 
-from ....modules.kyc.pan.pan_model import (
+from .models import (
+    SandboxPANVerifyData,
     SandboxPANVerifyResponse,
-    AadhaarVerifyRequestSchema,
     SandboxAadhaarVerifyResponse,
-    AadhaarOtpRequestSchema,
     SandboxAadhaarOtpResponse,
 )
-from ....config.constants import get_settings
+from .....modules.kyc.pan.pan_model import (
+    AadhaarVerifyRequestSchema,
+    AadhaarOtpRequestSchema,
+)
+from .....config.constants import get_settings
 
 
 logger = logging.getLogger(__name__)
@@ -49,9 +52,9 @@ class Sandbox:
             response = requests.post(url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
-            logger.info(data)
             self.access_token = data.get("access_token")
             constants.SANDBOX.update_access_token(self.access_token)
+            logger.info(constants.SANDBOX.ACCESS_TOKEN == self.access_token)
         except requests.RequestException as e:
             logger.error("Failed to authenticate: %s", e)
             raise HTTPException(
@@ -92,7 +95,55 @@ class Sandbox:
                 detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
             ) from e
 
-    async def verifyPan(self, pan_number):
+    async def verifyPan(self, pan_data: SandboxPANVerifyData):
+        if not self.access_token:
+            await self.authenticate()
+
+            if not self.access_token:
+                logger.error("Authentication failed. Cannot verify PAN.")
+                raise HTTPException(
+                    detail="Authentication failed. Cannot verify PAN.",
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+        url = f"{self._base_url}/kyc/pan/verify"
+        headers = {
+            "accept": "application/json",
+            "Authorization": self.access_token,
+            "x-api-key": self.api_key,
+            "x-api-version": "1.0",
+            "content-type": "application/json",
+        }
+        try:
+            payload = pan_data.model_dump(by_alias=True)
+            logger.info("payload: \n%s", payload)
+            response = requests.post(url, headers=headers, timeout=10, json=payload)
+            logger.info("status code: %s", response.status_code)
+            data = response.json()
+
+            if response.status_code == 403:
+                logger.error(
+                    "Token expired. Refreshing token...%s", str(response.content)
+                )
+                code = data.get("code")
+                await self.refresh_token(code)
+                headers["Authorization"] = self.access_token
+                response = requests.post(url, headers=headers, timeout=10, json=payload)
+
+            if response.status_code == 400:
+                logger.info("request error..%s", str(response.content))
+                message = data.get("message", "No message found")
+                logger.error("Message: %s", message)
+                raise HTTPException(status_code=500, detail=message)
+
+            response.raise_for_status()
+            return SandboxPANVerifyResponse.model_validate(response.json())
+        except requests.RequestException as e:
+            data = response.json()
+            message = data.get("message", "No message found")
+            logger.error("Message: %s", message)
+            raise HTTPException(detail=message, status_code=response.status_code) from e
+
+    async def old_verifyPan(self, pan_number):
         if not self.access_token:
             await self.authenticate()
 
@@ -203,34 +254,43 @@ class Sandbox:
         }
 
         try:
-            response = requests.post(
-                url, json=body.model_dump(), headers=headers, timeout=10
-            )
-            if response.status_code >= 400:
-                logger.info("Token expired. Refreshing token...")
-                data = response.json()
+            payload = body.model_dump()
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            logger.info("status code: %s", response.status_code)
+            data = response.json()
+
+            if response.status_code == 403:
+                logger.error(
+                    "Token expired. Refreshing token...%s", str(response.content)
+                )
                 code = data.get("code")
                 await self.refresh_token(code)
                 headers["Authorization"] = self.access_token
-                response = requests.post(
-                    url, json=body.model_dump(), headers=headers, timeout=10
-                )
+                response = requests.post(url, headers=headers, timeout=10, json=payload)
+                data = response.json()
+
+            if response.status_code == 400:
+                logger.info("request error..%s", str(response.content))
+                message = data.get("message", "No message found")
+                logger.error("Message: %s", message)
+                raise HTTPException(status_code=500, detail=message)
+
             if response.status_code == 500:
-                logger.info("OTP expired.")
+                logger.info("request error..%s", str(response.content))
+                message = data.get("message", "No message found")
                 raise HTTPException(
-                    detail="otp expired", status_code=status.HTTP_400_BAD_REQUEST
+                    detail=message, status_code=status.HTTP_400_BAD_REQUEST
                 )
 
-            logger.info(response.json())
             response.raise_for_status()
             return SandboxAadhaarVerifyResponse.model_validate(response.json())
+        except requests.RequestException as e:
+            data = response.json()
+            message = data.get("message", "No message found")
+            logger.error("Message: %s", message)
+            raise HTTPException(detail=message, status_code=response.status_code) from e
         except HTTPException as err:
             raise err
-        except requests.RequestException as e:
-            logger.error("Failed to verify PAN: %s", e)
-            raise HTTPException(
-                detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-            ) from e
         except Exception as e:
             logger.error("Failed to verify PAN: %s", e)
             raise HTTPException(
