@@ -219,7 +219,7 @@ class KycService:
         return KycResponse(
             entity_id=verification.Data.Pan,
             entity_type=KycType.PAN,
-            entity_name=verification.Data.FullName,
+            entity_name=kyc.entity_name,
             message=verification.Data.Status,
             internal_id=kyc.id,
             date_of_birth_match=verification.Data.MatchDob,
