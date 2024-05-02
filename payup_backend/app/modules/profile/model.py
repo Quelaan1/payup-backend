@@ -16,20 +16,19 @@ class ProfileUpdateRequest(ProfileBase):
     """profile update request model"""
 
     email: Annotated[Optional[EmailStr], Field(None, examples=list("dummy@email.com"))]
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    name: Optional[str] = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def check_single_word(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            for k, v in data.items():
-                if v is not None and isinstance(v, str):
-                    v = " ".join(v.split())  # Removes extra spaces
-                    if " " in v:
-                        raise ValueError(f"The {k} must be without spaces.")
-                    data[k] = v
-        return data
+    # @model_validator(mode="before")
+    # @classmethod
+    # def check_single_word(cls, data: Any) -> Any:
+    #     if isinstance(data, dict):
+    #         for k, v in data.items():
+    #             if v is not None and isinstance(v, str):
+    #                 v = " ".join(v.split())  # Removes extra spaces
+    #                 if " " in v:
+    #                     raise ValueError(f"The {k} must be without spaces.")
+    #                 data[k] = v
+    #     return data
 
 
 class ProfileUpdate(ProfileUpdateRequest):
@@ -50,8 +49,7 @@ class Profile(ProfileBase):
 
     id: UUID4 = Field()
     email: Annotated[Optional[EmailStr], Field(None, examples=list("dummy@email.com"))]
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    name: Optional[str] = None
     onboarded: bool
     kyc_complete: bool
     kyc_pan: bool

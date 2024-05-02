@@ -35,7 +35,7 @@ class KycHandler:
         self.router.add_api_route(
             "/pan/verify",
             endpoint=self.verify_kyc_pan_endpoint,
-            response_model=KycResponse,
+            response_model=ProfileResponse,
             status_code=status.HTTP_200_OK,
             methods=["POST"],
             response_model_exclude_none=True,
@@ -56,22 +56,6 @@ class KycHandler:
             methods=["POST"],
             response_model_exclude_none=True,
         )
-        self.router.add_api_route(
-            "/pan",
-            endpoint=self.create_kyc_endpoint,
-            response_model=ProfileResponse,
-            status_code=status.HTTP_201_CREATED,
-            methods=["POST"],
-            response_model_exclude_none=True,
-        )
-        # self.router.add_api_route(
-        #     "/",
-        #     endpoint=self.all_kyc_endpoint,
-        #     status_code=status.HTTP_200_OK,
-        #     response_model=KycVerifyResponse,
-        #     methods=["GET"],
-        #     response_model_exclude_none=True,
-        # )
 
     def hello(self):
         logger.debug("Hello : %s", self.name)
@@ -86,7 +70,7 @@ class KycHandler:
         if req_body.entity_type != KycType.PAN:
             raise ValueError("Wrong entity_type.")
         res_body = await self.kyc_service.pan_verify(
-            owner_id=token_user.profile_id,
+            profile_id=token_user.profile_id,
             pan_id=req_body.entity_id,
             consent=req_body.consent,
             dob=req_body.dob,
@@ -104,7 +88,7 @@ class KycHandler:
         if req_body.entity_type != KycType.AADHAAR:
             raise ValueError("Wrong entity_type.")
         res_body = await self.kyc_service.aadhaar_ekyc_otp(
-            aadhaar_id=req_body.entity_id, owner_id=token_user.profile_id
+            aadhaar_id=req_body.entity_id, profile_id=token_user.profile_id
         )
         logger.info(res_body.model_dump())
         return res_body

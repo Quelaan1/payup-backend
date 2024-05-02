@@ -6,7 +6,7 @@ from pydantic import (
     UUID4,
     ConfigDict,
     model_validator,
-    Field,
+    # Field,
 )
 from cryptography.fernet import Fernet
 from fastapi import HTTPException, status
@@ -15,6 +15,7 @@ from fastapi import HTTPException, status
 from ...cockroach_sql.db_enums import KycType
 from ...models.py_models import BaseResponse
 from ...config.constants import get_settings
+from ...helperClass.verifications.kyc_pan.sandbox.models import SplitAddressModel
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,7 @@ class KycCreate(KycUpdate):
     pincode: Optional[str] = None
     category: Optional[str] = None
     status: Optional[str] = None
+    address: Optional[SplitAddressModel] = None
 
     @model_validator(mode="after")
     def set_encrypted_id(self):

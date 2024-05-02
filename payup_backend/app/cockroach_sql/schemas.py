@@ -15,6 +15,7 @@ from sqlalchemy import (
     SmallInteger,
     BINARY,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from passlib.context import CryptContext
@@ -67,8 +68,7 @@ class Profile(Base):
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, index=True)
-    first_name = Column(String)
-    last_name = Column(String)
+    name = Column(String)
     kyc_complete = Column(Boolean, default=False)
     kyc_pan = Column(Boolean, default=False)
     kyc_uidai = Column(Boolean, default=False)
@@ -90,6 +90,7 @@ class KycEntity(Base):
     gender = Column(String, nullable=True)
     pincode = Column(String, nullable=True)
     category = Column(String, nullable=True)
+    address = Column(JSONB, nullable=True)
     status = Column(String)
 
     # Define the relationship to User through the association table

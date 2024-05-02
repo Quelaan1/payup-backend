@@ -42,8 +42,9 @@ class PhoneRepo:
     ) -> PhoneModel:
         """create phone entity in db"""
         db_model = self.repo_schema(
-            **p_model.model_dump(exclude=["m_pin"], by_alias=True)
+            **p_model.model_dump(exclude=["m_pin", "m_number"], by_alias=True)
         )
+        db_model.m_number = str(p_model.m_number)
         if p_model.m_pin is not None:
             db_model.set_password(p_model.m_pin.get_secret_value())
         logger.debug("db_model : %s", db_model)
