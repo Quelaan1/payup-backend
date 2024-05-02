@@ -149,9 +149,9 @@ class KycService:
             ) from err
 
     async def pan_verify(
-        self, owner_id: UUID, pan_id: str, name: str, consent: str, dob: str
-    ):
-        logger.info("checking: PAN %s for profile_id: %s", pan_id, owner_id)
+        self, profile_id: UUID, pan_id: str, name: str, consent: str, dob: str
+    ) -> ProfileResponse:
+        logger.info("checking: PAN %s for profile_id: %s", pan_id, profile_id)
         # verification = await self.sandbox_client.verifyPan(pan_number=pan_id)
         verification = await self.sandbox_client.verifyPan(
             pan_data=SandboxPANVerifyData(
@@ -166,13 +166,18 @@ class KycService:
         if verification.Data.Status.lower() == "valid":
             if not verification.Data.MatchName or not verification.Data.MatchDob:
                 # return wrong res
-                return KycResponse(
+
+                res = KycResponse(
                     entity_id=verification.Data.Pan,
                     entity_type=KycType.PAN,
                     entity_name=name,
                     message=verification.Data.Status,
                     date_of_birth_match=verification.Data.MatchDob,
                     name_as_per_pan_match=verification.Data.MatchName,
+                )
+
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail=res.model_dump()
                 )
 
             # check data in db and create or retrieve
@@ -216,24 +221,26 @@ class KycService:
                 await session.commit()
             logger.info(kyc)
 
-        return KycResponse(
-            entity_id=verification.Data.Pan,
-            entity_type=KycType.PAN,
-            entity_name=kyc.entity_name,
-            message=verification.Data.Status,
-            internal_id=kyc.id,
-            date_of_birth_match=verification.Data.MatchDob,
-            name_as_per_pan_match=verification.Data.MatchName,
+        return await self.create_pan_kyc(
+            kyc_data=KycCreateRequest(
+                entity_id=verification.Data.Pan,
+                entity_name=kyc.entity_name,
+                entity_type=KycType.PAN,
+                internal_id=kyc.id,
+            ),
+            profile_id=profile_id,
         )
 
     async def aadhaar_ekyc_otp(
         self,
-        owner_id: UUID,
+        profile_id: UUID,
         aadhaar_id: str,
     ):
         try:
             data = AadhaarOtpRequestSchema(aadhaar_number=aadhaar_id)
-            logger.info("checking: AADHAAR %s for profile_id: %s", aadhaar_id, owner_id)
+            logger.info(
+                "checking: AADHAAR %s for profile_id: %s", aadhaar_id, profile_id
+            )
             ekyc_otp_response = await self.sandbox_client.otpAadhaar(body=data)
             logger.info(ekyc_otp_response)
             if ekyc_otp_response is None:
@@ -278,6 +285,7 @@ class KycService:
                 status=verification.Data.Status,
                 pincode=verification.Data.SplitAddress.Pincode,
                 verified=True,
+                address=verification.Data.SplitAddress,
             )
 
             async with self.sessionmaker() as session:
@@ -320,7 +328,10 @@ class KycService:
                     session=session,
                     obj_id=profile_id,
                     p_model=ProfileUpdate(
-                        kyc_uidai=True, kyc_complete=True, onboarded=True
+                        kyc_uidai=True,
+                        kyc_complete=True,
+                        onboarded=True,
+                        name=verification.Data.Name.capitalize(),
                     ),
                     col_filters=[
                         (self.profile_repo.repo_schema.kyc_pan, True),
@@ -363,8 +374,8 @@ class KycService:
                 if len(kyc_lookup_list) == 0:
                     logger.info("no entry found for %s", kyc_data.entity_id)
                     raise HTTPException(
-                        detail="wrong kyc data sent, conflict with stored info",
-                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="databse inconsistent",
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     )
 
                 # create association

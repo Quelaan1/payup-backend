@@ -61,12 +61,14 @@ class AuthService:
             now = datetime.now(pytz.utc)
             future_time = (now + timedelta(minutes=30)).replace(tzinfo=None)
             otp_new = random.randint(100000, 999999)
+            logger.info("Query for phone number")
 
             async with self.sessionmaker() as session:
                 # query for phone number if already exist get if, else create phone entity in db
                 db_phone_models = await self.phone_repo.get_obj_by_filter(
                     session=session, col_filters=[(PhoneEntity.m_number, phone_number)]
                 )
+                logger.info("Query for phone number")
                 if len(db_phone_models) == 0:
                     db_phone = await self.create_profile_txn(
                         phone_number=phone_number, session=session
@@ -184,11 +186,11 @@ class AuthService:
         # create a profile entity
         # create a user entity
         # create a phone
-        db_profile = self.profile_repo.create_obj(
+        db_profile = await self.profile_repo.create_obj(
             session=session, p_model=ProfileCreate()
         )
 
-        db_user = self.user_repo.create_obj(
+        db_user = await self.user_repo.create_obj(
             session=session,
             p_model=UserCreate(
                 profile_id=db_profile.id,
@@ -198,7 +200,7 @@ class AuthService:
             ),
         )
 
-        db_phone = self.phone_repo.create_obj(
+        db_phone = await self.phone_repo.create_obj(
             session=session,
             p_model=PhoneCreate(
                 m_number=phone_number,

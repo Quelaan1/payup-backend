@@ -1,5 +1,7 @@
 """configure app"""
 
+import enum
+import json
 import logging
 from fastapi import Request, status, HTTPException
 from fastapi.responses import JSONResponse
@@ -17,6 +19,11 @@ from ..models.py_models import BaseResponse
 logger = logging.getLogger(__name__)
 
 
+def serialize_enum(obj):
+    if isinstance(obj, enum.Enum):
+        return obj.name
+
+
 class CustomExceptionHandler:
 
     @classmethod
@@ -28,6 +35,9 @@ class CustomExceptionHandler:
             msg = ""
             for i, data in enumerate(exc.detail):
                 msg = msg + ": " * (i > 0) + str(data)
+        else:
+            msg = str(exc.detail)
+
         logger.info("Http exception Error : %s", exc)
 
         detail = BaseResponse(message=msg).model_dump()
