@@ -1,8 +1,8 @@
 """layer between router and data access operations. handles db connection, commit, rollback and close."""
 
 import logging
-import random
 from datetime import datetime, timedelta
+import secrets
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
@@ -59,12 +59,12 @@ class AuthService:
         try:
             # create random otp and store in db with expiry time
             now = datetime.now(pytz.utc)
-            future_time = (now + timedelta(minutes=30)).replace(tzinfo=None)
-            otp_new = random.randint(100000, 999999)
-            logger.info("Query for phone number")
+            expiry_time = now + timedelta(minutes=30)
+            expiry_time = expiry_time.replace(tzinfo=None)
+            otp_new = secrets.randbelow(900000) + 100000  # Generates a 6-digit OTP
 
             async with self.sessionmaker() as session:
-                # query for phone number if already exist get if, else create phone entity in db
+                # query for phone number if already exist get, else create phone entity in db
                 db_phone_models = await self.phone_repo.get_obj_by_filter(
                     session=session, col_filters=[(PhoneEntity.m_number, phone_number)]
                 )
@@ -81,7 +81,7 @@ class AuthService:
                     p_model=OTPCreate(
                         id=db_phone.id,
                         m_otp=otp_new,
-                        expires_at=future_time,
+                        expires_at=expiry_time,
                     ),
                 )
                 await session.commit()
@@ -89,55 +89,63 @@ class AuthService:
             response = await self.twilio_service.send_otp_sms(
                 phone_number, str(otp_new)
             )
+
             return response
         except Exception as err:
-            logger.error("error : %s", err)
+            logger.error("Send OTP: %s", err)
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=err.args,
+                detail="An unexpected error occurred.\nPlease try again later.",
             ) from err
 
     async def verify_otp(self, phone_number: str, otp: int) -> ProfileModel:
-        """verify phone otp via sms"""
+        """Verify phone OTP via SMS."""
         try:
-            # get phone otp data from db
             async with self.sessionmaker() as session:
-
+                # Get phone OTP data from the database
                 otp_model = await self.otp_repo.delete_obj_related_by_number(
                     session=session,
                     phone_number=phone_number,
                     col_filters=[(self.otp_repo.repo_schema.m_otp, otp)],
                 )
 
+                # Check if OTP model exists
                 if otp_model is None:
-                    logger.debug("otp didn't matched")
+                    logger.debug("OTP didn't match")
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="otp match failed",
+                        detail="The OTP you entered is incorrect. Please try again.",
                     )
 
-                # change database states.
+                # Update database state
                 phone_model = await self.phone_repo.update_obj(
                     session=session,
                     obj_id=otp_model.id,
                     p_model=PhoneUpdate(is_primary=True, verified=True),
                 )
 
+                # Get profile data by user ID
                 data = await self.profile_repo.get_profile_by_user(
                     session=session, user_id=phone_model.user_id
                 )
+
+                # Commit the session changes
                 await session.commit()
 
-            return ProfileModel.model_validate(data)
-        except NotFoundError as err:
-            raise err
-        except (
-            Exception
-        ) as err:  # This will catch any exception that is not an HTTPException
-            logger.error("error : %s", err.args)
+                # Validate and return profile data
+                return ProfileModel.model_validate(data)
+
+        except HTTPException:
+            # Re-raise HTTPExceptions (already handled)
+            raise
+
+        except Exception as err:
+            # Log and raise other exceptions
+            logger.error("Error during OTP verification: %s", err)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(err.args),
+                detail="An unexpected error occurred. Please try again later.",
             ) from err
 
     # async def set_credentials_txn(self, phone_number: str, pin: int, user_id: UUID):

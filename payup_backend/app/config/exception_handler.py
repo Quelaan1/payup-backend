@@ -29,18 +29,21 @@ class CustomExceptionHandler:
     @classmethod
     def http_exception_handler(cls, request: Request, exc: HTTPException):
         logger.info("%s", exc.detail)
+
+        # Extract the error message from the HTTPException detail
         if isinstance(exc.detail, str):
             msg = exc.detail
         elif isinstance(exc.detail, tuple):
-            msg = ""
-            for i, data in enumerate(exc.detail):
-                msg = msg + ": " * (i > 0) + str(data)
+            msg = " ".join(str(data) for data in exc.detail)
         else:
             msg = str(exc.detail)
 
-        logger.info("Http exception Error : %s", exc)
+        logger.info("HTTP exception Error: %s", exc)
 
-        detail = BaseResponse(message=msg).model_dump()
+        # Construct the response content
+        detail = {"message": msg}
+
+        # Return JSONResponse with the error message
         return JSONResponse(status_code=exc.status_code, content=detail)
 
     @classmethod

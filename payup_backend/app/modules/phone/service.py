@@ -71,7 +71,6 @@ class PhoneService:
             phone_id {UUID} -- The user's varified phone_numbers' database id.
             pin {int} -- A 6-digit pin created by user.
             user_id {UUID} -- id of the user owning the phone_number
-
         """
         try:
             with self.sessionmaker() as session:

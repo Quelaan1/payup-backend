@@ -116,9 +116,7 @@ class OTPRepo:
 
         if db_model is None:
             logger.info("Object not found with filters: %s", col_filters)
-            raise NotFoundError(
-                name=__name__, detail="otp not found"
-            )  # Object not found, can't delete
+            return None  # Object not found, can't delete
 
         delete_stmt = delete(self.repo_schema)
         for col, val in col_filters:
