@@ -95,6 +95,11 @@ class CustomExceptionHandler:
 
     @classmethod
     def not_found_exception_handler(cls, request: Request, exc: NotFoundError):
-        detail = BaseResponse(message=f"Resource {exc.name} not found.").model_dump()
+        if exc.detail is not None:
+            detail = BaseResponse(message=f"{exc.detail}.").model_dump()
+        else:
+            detail = BaseResponse(
+                message=f"Resource {exc.name} not found."
+            ).model_dump()
         logger.info("NotFoundError : %s", exc.detail)
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=detail)
