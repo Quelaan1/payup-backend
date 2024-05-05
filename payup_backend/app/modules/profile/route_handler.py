@@ -94,7 +94,7 @@ class ProfileHandler:
 
         if str(obj_id) != token_user.profile_id:
             logger.info("ids didn't match")
-            raise TokenException(detail="different profile_id")
+            raise TokenException(detail="different profile_id", name="token_user")
 
         response = await self.profile_service.update_user_profile(
             obj_id=obj_id, update_model=req_body

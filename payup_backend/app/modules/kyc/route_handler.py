@@ -7,9 +7,9 @@ from fastapi import APIRouter, status, Depends, HTTPException
 from .service import KycService
 from .model import (
     KycBase,
-    KycResponse,
     KycCreateRequest,
     KycPanVerifyRequest,
+    KycPanVerifyResponse,
     KycAadhaarResponse,
     KycAadhaarRequest,
 )
@@ -35,7 +35,7 @@ class KycHandler:
         self.router.add_api_route(
             "/pan/verify",
             endpoint=self.verify_kyc_pan_endpoint,
-            response_model=ProfileResponse,
+            response_model=KycPanVerifyResponse,
             status_code=status.HTTP_200_OK,
             methods=["POST"],
             response_model_exclude_none=True,
