@@ -4,11 +4,13 @@ import logging
 from uuid import UUID
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException, status
 
 from .model import ProfileUpdate
 from ...cockroach_sql.database import database
 from ...config.constants import get_settings
 from ...cockroach_sql.dao.profile_dao import ProfileRepo
+
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +43,22 @@ class ProfileService:
         Arguments:
             obj_id {UUID} -- The profile's unique ID.
         """
-        async with self.sessionmaker() as session:
-            user = await self._repo.get_obj(session=session, obj_id=obj_id)
-            await session.commit()
-        return user
+        try:
+
+            async with self.sessionmaker() as session:
+                user = await self._repo.get_obj(session=session, obj_id=obj_id)
+                await session.commit()
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="Profile not found"
+                )
+        except HTTPException as e:
+            raise e
+        except Exception as err:
+            logger.error("error : %s", err)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=err.args[0]
+            ) from err
 
     async def update_user_profile(self, obj_id: UUID, update_model: ProfileUpdate):
         """

@@ -87,18 +87,20 @@ class JWTAuth:
             print("JWT is valid. Issuer, Audience, and Subject are verified.")
             return decoded
         except jwt.ExpiredSignatureError as exc:
+            logger.error("error: %s", exc.args)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
             ) from exc
         except jwt.InvalidTokenError as exc:
+            logger.error("error: %s", exc.args)
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token: {e}"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
             ) from exc
         except Exception as exc:
-            print(f"Token validation failed: {exc}")
+            logger.error("Token validation failed: %s", exc)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Invalid token: {e}",
+                detail="Something went wrong, please try again later",
             ) from exc
 
     def authenticate_user(

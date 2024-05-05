@@ -27,13 +27,13 @@ class OTPUpdate(OTPBase):
 
     m_otp: int
     expires_at: datetime
+    attempt_remains: int = constant.TWILIO.MAX_SMS_ATTEMPTS - 1
 
 
 class OTPCreate(OTPUpdate):
     """otp create model to be passed to otp_dao"""
 
     id: UUID4
-    attempt_remains: int = constant.TWILIO.MAX_SMS_ATTEMPTS
 
 
 class OTP(OTPBase):
@@ -43,6 +43,7 @@ class OTP(OTPBase):
     m_otp: int
     expires_at: datetime
     attempt_remains: int
+    updated_at: datetime
 
 
 class Credential(BaseModel):
@@ -68,6 +69,9 @@ class OTPRequestBase(BaseModel):
 
 class OTPResponse(BaseResponse):
     """response on successful otp sent"""
+
+    attempt_remains: int
+    next_at: datetime
 
 
 class OTPVerifyResponse(BaseResponse, TokenBody):
