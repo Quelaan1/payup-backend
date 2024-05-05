@@ -63,7 +63,7 @@ class ProfileHandler:
         response = await self.profile_service.get_user_profile(
             obj_id=token_user.profile_id
         )
-        logger.info(response.model_dump())
+        # logger.info(response.model_dump())
         return response
 
     async def get_profile_endpoint(
