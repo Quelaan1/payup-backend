@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 import pytz
 
-from .model import OTPCreate, OTPResponse
+from .model import OTPCreate, OTPResponse, OTPUpdate
 from ..user.service import UserService
 from ..user.model import UserCreate
 from ..profile.model import ProfileCreate, Profile as ProfileModel
@@ -68,7 +68,7 @@ class AuthService:
                 db_phone_models = await self.phone_repo.get_obj_by_filter(
                     session=session, col_filters=[(PhoneEntity.m_number, phone_number)]
                 )
-                logger.info("Query for phone number")
+
                 if len(db_phone_models) == 0:
                     db_phone = await self.create_profile_txn(
                         phone_number=phone_number, session=session
@@ -76,21 +76,84 @@ class AuthService:
                 else:
                     db_phone = db_phone_models[0]
 
-                await self.otp_repo.update_or_create_obj(
-                    session=session,
-                    p_model=OTPCreate(
-                        id=db_phone.id,
-                        m_otp=otp_new,
-                        expires_at=expiry_time,
-                    ),
+                db_otp = await self.otp_repo.get_obj(
+                    session=session, obj_id=db_phone.id
                 )
+
+                if db_otp is None:
+                    # create otp entity in db
+                    updated_db = await self.otp_repo.create_obj(
+                        session=session,
+                        p_model=OTPCreate(
+                            id=db_phone.id,
+                            m_otp=otp_new,
+                            expires_at=expiry_time,
+                            attempt_remains=constants.TWILIO.MAX_SMS_ATTEMPTS - 1,
+                        ),
+                    )
+                else:
+                    # update otp entity in db
+                    if db_otp.attempt_remains == 0:
+                        if db_otp.expires_at > now:
+                            logger.error("Limit reached. Please try after sometime.")
+                            res = OTPResponse(
+                                next_at=db_otp.expires_at,
+                                attempt_remains=db_otp.attempt_remains,
+                                message="Limit reached. Please try after sometime.",
+                            )
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=res.model_dump_json(),
+                            )
+                        updated_db = await self.otp_repo.update_obj(
+                            session=session,
+                            obj_id=db_phone.id,
+                            p_model=OTPUpdate(
+                                m_otp=otp_new,
+                                expires_at=expiry_time,
+                                attempt_remains=constants.TWILIO.MAX_SMS_ATTEMPTS - 1,
+                            ),
+                        )
+                    else:
+                        if db_otp.updated_at + timedelta(minutes=1) > now:
+                            logger.error("Not Allowed. Wait for 1 minute.")
+                            res = OTPResponse(
+                                next_at=db_otp.updated_at + timedelta(minutes=1),
+                                attempt_remains=db_otp.attempt_remains,
+                                message="Not Allowed. Wait for 1 minute.",
+                            )
+                            raise HTTPException(
+                                status_code=status.HTTP_400_BAD_REQUEST,
+                                detail=res.model_dump_json(),
+                            )
+                        updated_db = await self.otp_repo.update_obj(
+                            session=session,
+                            obj_id=db_phone.id,
+                            p_model=OTPUpdate(
+                                m_otp=otp_new,
+                                expires_at=expiry_time,
+                                attempt_remains=db_otp.attempt_remains - 1,
+                            ),
+                        )
+
                 await session.commit()
 
             response = await self.twilio_service.send_otp_sms(
                 phone_number, str(otp_new)
             )
 
-            return response
+            nx = (
+                updated_db.updated_at + timedelta(minutes=1)
+                if updated_db.attempt_remains > 0
+                else expiry_time
+            )
+            return OTPResponse(
+                next_at=nx,
+                attempt_remains=updated_db.attempt_remains,
+                message=response.message,
+            )
+        except HTTPException as e:
+            raise e
         except Exception as err:
             logger.error("Send OTP: %s", err)
 

@@ -28,7 +28,7 @@ class CustomExceptionHandler:
 
     @classmethod
     def http_exception_handler(cls, request: Request, exc: HTTPException):
-        logger.info("%s", exc.detail)
+        logger.error("%s", exc.detail)
         if isinstance(exc.detail, str):
             msg = exc.detail
         elif isinstance(exc.detail, tuple):
@@ -38,7 +38,10 @@ class CustomExceptionHandler:
         else:
             msg = str(exc.detail)
 
-        logger.info("Http exception Error : %s", exc)
+        if exc.status_code == 500:
+            msg = "Something went wrong, please try again later."
+
+        logger.error("Http exception Error : %s", exc)
 
         detail = BaseResponse(message=msg).model_dump()
         return JSONResponse(status_code=exc.status_code, content=detail)
@@ -48,7 +51,7 @@ class CustomExceptionHandler:
         cls, request: Request, exc: RequestValidationError
     ):
         errs = exc.errors()
-        logger.info("UnicornError : %s", errs)
+        logger.error("UnicornError : %s", errs)
 
         msg = ""
         for db in errs:
@@ -60,13 +63,13 @@ class CustomExceptionHandler:
 
     @classmethod
     def token_exception_handler(cls, request: Request, exc: TokenException):
-        logger.info("Token Error : %s", exc.detail)
+        logger.error("Token Error : %s", exc.detail)
         detail = BaseResponse(message=f"{exc.name} : {exc.detail}").model_dump()
         return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content=detail)
 
     @classmethod
     def config_exception_handler(cls, request: Request, exc: ConfigError):
-        logger.info("ConfigError : %s", exc.args)
+        logger.error("ConfigError : %s", exc.args)
         detail = BaseResponse(message="Oops! config not set properly.").model_dump()
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -75,9 +78,9 @@ class CustomExceptionHandler:
 
     @classmethod
     def database_exception_handler(cls, request: Request, exc: DatabaseError):
-        logger.info("DatabaseError : %s", exc.args)
+        logger.error("DatabaseError : %s", exc.args)
         detail = BaseResponse(
-            message="Oops! issue with database connection."
+            message="Something went wrong, please try again later."
         ).model_dump()
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=detail
@@ -87,14 +90,22 @@ class CustomExceptionHandler:
     def external_service_exception_handler(
         cls, request: Request, exc: ExternalServiceError
     ):
-        detail = BaseResponse(message=f"Service {exc.name} is down.").model_dump()
-        logger.info("ExternalServiceError : %s", exc.args)
+        logger.error("Service %s is down.", exc.name)
+        detail = BaseResponse(
+            message="Something went wrong, please try again later"
+        ).model_dump()
+        logger.error("ExternalServiceError : %s", exc.args)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=detail
         )
 
     @classmethod
     def not_found_exception_handler(cls, request: Request, exc: NotFoundError):
-        detail = BaseResponse(message=f"Resource {exc.name} not found.").model_dump()
-        logger.info("NotFoundError : %s", exc.detail)
+        if exc.detail is not None:
+            detail = BaseResponse(message=f"{exc.detail}.").model_dump()
+        else:
+            detail = BaseResponse(
+                message=f"Resource {exc.name} not found."
+            ).model_dump()
+        logger.error("NotFoundError : %s", exc.detail)
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content=detail)

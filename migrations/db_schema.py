@@ -19,8 +19,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 from passlib.context import CryptContext
-
-from ..config.constants import get_settings
+from sqlalchemy_data_model_visualizer import (
+    add_web_font_and_interactivity,
+    generate_data_model_diagram,
+)
 
 
 # Define the base class
@@ -38,8 +40,7 @@ Base = declarative_base(cls=Base)
 # Create a password context for hashing and verifying passwords
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-cons = get_settings()
-schema = f"{cons.COCKROACH.USER}_schema"
+schema = "dev_schema"
 
 
 class User(Base):
@@ -170,7 +171,6 @@ class OtpEntity(Base):
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     m_otp = Column(Integer)
-    attempt_remains = Column(Integer)
     expires_at = Column(DateTime)  # update on update
 
 
@@ -272,3 +272,24 @@ class AccessTokenBlacklist(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     expires_on = Column(DateTime)
+
+
+def main():
+    models = [
+        User,
+        Profile,
+        KycEntity,
+        KycLookup,
+        UserKycRelation,
+        OtpEntity,
+        PhoneEntity,
+        PayeeEntity,
+        AccessTokenBlacklist,
+        RefreshTokenEntity,
+        ProfilePayeeRelation,
+    ]
+    output_file_name = "my_data_model_diagram"
+    generate_data_model_diagram(models, output_file_name)
+    add_web_font_and_interactivity(
+        "my_data_model_diagram.svg", "my_interactive_data_model_diagram.svg"
+    )

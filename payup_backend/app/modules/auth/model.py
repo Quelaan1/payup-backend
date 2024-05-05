@@ -9,6 +9,9 @@ from fastapi.param_functions import Form
 from ...models.py_models import BaseResponse
 from ..profile.model import Profile
 from ..token.model import TokenBody
+from ...config.constants import get_settings
+
+constant = get_settings()
 
 
 class OTPBase(BaseModel):
@@ -24,6 +27,7 @@ class OTPUpdate(OTPBase):
 
     m_otp: int
     expires_at: datetime
+    attempt_remains: int = constant.TWILIO.MAX_SMS_ATTEMPTS - 1
 
 
 class OTPCreate(OTPUpdate):
@@ -38,6 +42,8 @@ class OTP(OTPBase):
     id: UUID4
     m_otp: int
     expires_at: datetime
+    attempt_remains: int
+    updated_at: datetime
 
 
 class Credential(BaseModel):
@@ -63,6 +69,9 @@ class OTPRequestBase(BaseModel):
 
 class OTPResponse(BaseResponse):
     """response on successful otp sent"""
+
+    attempt_remains: int
+    next_at: datetime
 
 
 class OTPVerifyResponse(BaseResponse, TokenBody):

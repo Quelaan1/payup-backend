@@ -39,6 +39,8 @@ class ProfileRepo:
         stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
+        if db_model is None:
+            return None
         return ProfileModel.model_validate(db_model)
 
     async def create_obj(

@@ -36,7 +36,7 @@ class Sandbox:
         if not self.api_key or not self.api_secret:
             logger.error("API key or secret is missing.")
             raise HTTPException(
-                detail="environment not set properly",
+                detail="Something went wrong, please try again later",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -58,7 +58,13 @@ class Sandbox:
         except requests.RequestException as e:
             logger.error("Failed to authenticate: %s", e)
             raise HTTPException(
-                detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                detail=e.args[0], status_code=response.status_code
+            ) from e
+        except Exception as e:
+            logger.error("Failed to authenticate: %s", e)
+            raise HTTPException(
+                detail="Something went wrong, please try again later",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             ) from e
         finally:
             response.close()
@@ -94,7 +100,13 @@ class Sandbox:
         except requests.RequestException as e:
             logger.error("Failed to refresh token: %s", e)
             raise HTTPException(
-                detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                detail=e.args[0], status_code=response.status_code
+            ) from e
+        except Exception as e:
+            logger.error("Failed to authenticate: %s", e)
+            raise HTTPException(
+                detail="Something went wrong, please try again later",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             ) from e
         finally:
             response.close()
@@ -138,6 +150,12 @@ class Sandbox:
             message = data.get("message", "No message found")
             logger.error("Message: %s", message)
             raise HTTPException(detail=message, status_code=response.status_code) from e
+        except Exception as e:
+            logger.error("Failed to authenticate: %s", e)
+            raise HTTPException(
+                detail="Something went wrong, please try again later",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            ) from e
         finally:
             response.close()
 
@@ -167,7 +185,7 @@ class Sandbox:
         except requests.RequestException as e:
             logger.error("Failed to verify PAN: %s", e)
             raise HTTPException(
-                detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                detail=e.args[0], status_code=response.status_code
             ) from e
         except Exception as e:
             logger.error("Failed to verify PAN: %s", e)
@@ -208,7 +226,7 @@ class Sandbox:
         except requests.RequestException as e:
             logger.error("Failed to send OTP: %s", e.args)
             raise HTTPException(
-                detail=e.args[0], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+                detail=e.args[0], status_code=response.status_code
             ) from e
         except Exception as e:
             logger.error("Failed to send OTP: %s", e)

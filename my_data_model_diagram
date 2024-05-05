@@ -1,0 +1,276 @@
+// Interactive Data Models
+digraph {
+	graph [bgcolor="#EEEEEE" rankdir=TB splines=spline]
+	node [fontname=Roboto fontsize=12 shape=none]
+	edge [fontname=Roboto fontsize=10]
+	User [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">User</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">user_type</TD>
+                         <TD BGCOLOR="#BBDEFB">SMALLINT ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">is_active</TD>
+                         <TD BGCOLOR="#BBDEFB">BOOLEAN ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">phone_lock</TD>
+                         <TD BGCOLOR="#BBDEFB">BOOLEAN ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">profile_id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://User_details.html"]
+	User -> PhoneEntity [label=phones color="#1E88E5" style=dashed tooltip="Relation between User and PhoneEntity"]
+	User -> UserKycRelation [label=kyc_entities color="#1E88E5" style=dashed tooltip="Relation between User and UserKycRelation"]
+	Profile [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">Profile</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">email</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR (Unique,Index)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">name</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">kyc_complete</TD>
+                         <TD BGCOLOR="#BBDEFB">BOOLEAN ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">kyc_pan</TD>
+                         <TD BGCOLOR="#BBDEFB">BOOLEAN ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">kyc_uidai</TD>
+                         <TD BGCOLOR="#BBDEFB">BOOLEAN ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">onboarded</TD>
+                         <TD BGCOLOR="#BBDEFB">BOOLEAN ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://Profile_details.html"]
+	Profile -> ProfilePayeeRelation [label=payee_entities color="#1E88E5" style=dashed tooltip="Relation between Profile and ProfilePayeeRelation"]
+	KycEntity [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">KycEntity</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">entity_id_encrypted</TD>
+                         <TD BGCOLOR="#BBDEFB">BINARY (Unique,Index)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">entity_name</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">verified</TD>
+                         <TD BGCOLOR="#BBDEFB">BOOLEAN ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">entity_type</TD>
+                         <TD BGCOLOR="#BBDEFB">SMALLINT ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">email</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">gender</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">pincode</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">category</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">address</TD>
+                         <TD BGCOLOR="#BBDEFB">JSONB ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">status</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://KycEntity_details.html"]
+	KycEntity -> UserKycRelation [label=users color="#1E88E5" style=dashed tooltip="Relation between KycEntity and UserKycRelation"]
+	KycLookup [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">KycLookup</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">kyc_entity_id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">entity_type</TD>
+                         <TD BGCOLOR="#BBDEFB">SMALLINT ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">entity_id</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR (Unique,Index)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://KycLookup_details.html"]
+	UserKycRelation [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">UserKycRelation</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">kyc_id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">user_id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://UserKycRelation_details.html"]
+	UserKycRelation -> User [label=users color="#1E88E5" style=dashed tooltip="Relation between UserKycRelation and User"]
+	UserKycRelation -> KycEntity [label=kyc_entities color="#1E88E5" style=dashed tooltip="Relation between UserKycRelation and KycEntity"]
+	OtpEntity [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">OtpEntity</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">m_otp</TD>
+                         <TD BGCOLOR="#BBDEFB">INTEGER ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">expires_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://OtpEntity_details.html"]
+	PhoneEntity [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">PhoneEntity</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">m_number</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR (Unique,Index)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">m_pin</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">verified</TD>
+                         <TD BGCOLOR="#BBDEFB">BOOLEAN ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">is_primary</TD>
+                         <TD BGCOLOR="#BBDEFB">BOOLEAN ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">user_id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://PhoneEntity_details.html"]
+	PhoneEntity -> User [label=owner color="#1E88E5" style=dashed tooltip="Relation between PhoneEntity and User"]
+	PayeeEntity [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">PayeeEntity</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">b_account</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">ifsc</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">nickname</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">name</TD>
+                         <TD BGCOLOR="#BBDEFB">VARCHAR ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://PayeeEntity_details.html"]
+	PayeeEntity -> ProfilePayeeRelation [label=profiles color="#1E88E5" style=dashed tooltip="Relation between PayeeEntity and ProfilePayeeRelation"]
+	AccessTokenBlacklist [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">AccessTokenBlacklist</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">expires_on</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://AccessTokenBlacklist_details.html"]
+	RefreshTokenEntity [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">RefreshTokenEntity</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">jti</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (Unique,Index)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">expires_on</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">user_id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://RefreshTokenEntity_details.html"]
+	ProfilePayeeRelation [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+        <TR><TD COLSPAN="2" BGCOLOR="#3F51B5"><FONT COLOR="white">ProfilePayeeRelation</FONT></TD></TR>
+        <TR>
+                         <TD BGCOLOR="#BBDEFB">payee_id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">profile_id</TD>
+                         <TD BGCOLOR="#BBDEFB">UUID (PK)</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">created_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR><TR>
+                         <TD BGCOLOR="#BBDEFB">updated_at</TD>
+                         <TD BGCOLOR="#BBDEFB">DATETIME ()</TD>
+                         </TR></TABLE>> URL="http://ProfilePayeeRelation_details.html"]
+	ProfilePayeeRelation -> Profile [label=profiles color="#1E88E5" style=dashed tooltip="Relation between ProfilePayeeRelation and Profile"]
+	ProfilePayeeRelation -> PayeeEntity [label=payee_entities color="#1E88E5" style=dashed tooltip="Relation between ProfilePayeeRelation and PayeeEntity"]
+}
