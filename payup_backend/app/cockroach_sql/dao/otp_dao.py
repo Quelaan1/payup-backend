@@ -5,16 +5,21 @@ from uuid import UUID
 from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update, Column
+from datetime import datetime
+import pytz
 
 from ...modules.auth.model import OTPCreate, OTPUpdate, OTP as OTPModel
 from ..schemas import OtpEntity as OTPSchema, PhoneEntity as PhoneSchema
 from ...config.errors import NotFoundError
+from ...config.constants import get_settings
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(lineno)d | %(filename)s : %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+constants = get_settings()
 
 
 class OTPRepo:
@@ -37,11 +42,17 @@ class OTPRepo:
         stmt = select(self.repo_schema).filter(self.repo_schema.id == obj_id)
         result = await session.execute(stmt)
         db_model = result.scalars().first()
-        return OTPModel.model_validate(db_model)
+        if db_model is None:
+            return (
+                None  # or you can raise an exception or return any other default value
+            )
+        else:
+            return OTPModel.model_validate(db_model)
 
     async def create_obj(self, session: AsyncSession, p_model: OTPCreate) -> OTPModel:
         """create otp entity in db"""
         db_model = self.repo_schema(**p_model.model_dump(exclude=[""], by_alias=True))
+        db_model.attempt_remains = constants.TWILIO.MAX_SMS_ATTEMPTS - 1
         session.add(db_model)
         await session.flush()
         await session.refresh(db_model)
@@ -54,39 +65,19 @@ class OTPRepo:
         """update otp gives its primary key and update model"""
         stmt = (
             update(self.repo_schema)
-            .where(self.repo_schema.id == obj_id)
-            .values(**p_model.model_dump(exclude=[""], exclude_unset=True))
-            .execution_options(synchronize_session="fetch")
+            .where(
+                (self.repo_schema.id == obj_id) & (self.repo_schema.attempt_remains > 0)
+            )
+            .values(
+                **p_model.model_dump(exclude=[""], exclude_unset=True),
+                attempt_remains=self.repo_schema.attempt_remains - 1
+            )
         )
-        result = await session.execute(stmt)
+        result = await session.execute(
+            stmt.execution_options(synchronize_session="fetch")
+        )
         await session.flush()
         result.close()
-
-    async def update_or_create_obj(
-        self, session: AsyncSession, p_model: OTPCreate
-    ) -> OTPModel:
-        """Create or update otp entity in db."""
-        unique_identifier = (
-            p_model.id
-        )  # Replace `unique_field` with the actual field name used to identify uniqueness
-        stmt = select(self.repo_schema).filter(self.repo_schema.id == unique_identifier)
-        result = await session.execute(stmt)
-        db_model = result.scalars().first()
-        if not db_model is None:
-            # The record exists, so update it
-            for key, value in p_model.model_dump(exclude=["id"], by_alias=True).items():
-                setattr(db_model, key, value)
-        else:
-            # The record does not exist, create a new one
-            db_model = self.repo_schema(
-                **p_model.model_dump(exclude=[""], by_alias=True)
-            )
-            session.add(db_model)
-
-        await session.flush()
-        await session.refresh(db_model)
-        p_resp = OTPModel.model_validate(db_model)
-        return p_resp
 
     async def delete_obj(self, session: AsyncSession, obj_id: UUID) -> None:
         """deletes otp entity from db"""

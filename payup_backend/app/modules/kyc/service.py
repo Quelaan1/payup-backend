@@ -177,7 +177,7 @@ class KycService:
                 )
 
                 raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST, detail=res.model_dump()
+                    status_code=verification.Code, detail=res.model_dump()
                 )
 
             # check data in db and create or retrieve

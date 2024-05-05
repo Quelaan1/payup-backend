@@ -105,6 +105,7 @@ class TwilioSettings(BaseSettings):
     AUTH_TOKEN: str
     SMS_SERVICE_SID: str
     PHONE_NUMBER: str
+    MAX_SMS_ATTEMPTS: int = 3
 
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="twilio_", extra="ignore"

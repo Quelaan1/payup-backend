@@ -170,6 +170,7 @@ class OtpEntity(Base):
 
     id = Column(UUID, primary_key=True, default=uuid.uuid4)
     m_otp = Column(Integer)
+    attempt_remains = Column(Integer)
     expires_at = Column(DateTime)  # update on update
 
 
