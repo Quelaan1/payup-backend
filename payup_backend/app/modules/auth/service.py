@@ -94,17 +94,17 @@ class AuthService:
                 else:
                     # update otp entity in db
                     if db_otp.attempt_remains == 0:
-                        if db_otp.expires_at > now:
-                            logger.error("Limit reached. Please try after sometime.")
-                            res = OTPResponse(
-                                next_at=db_otp.expires_at,
-                                attempt_remains=db_otp.attempt_remains,
-                                message="Limit reached. Please try after sometime.",
-                            )
-                            raise HTTPException(
-                                status_code=status.HTTP_400_BAD_REQUEST,
-                                detail=res.model_dump_json(),
-                            )
+                        # if db_otp.expires_at > now:
+                        #     logger.error("Limit reached. Please try after sometime.")
+                        #     res = OTPResponse(
+                        #         next_at=db_otp.expires_at,
+                        #         attempt_remains=db_otp.attempt_remains,
+                        #         message="Limit reached. Please try after sometime.",
+                        #     )
+                        #     raise HTTPException(
+                        #         status_code=status.HTTP_400_BAD_REQUEST,
+                        #         detail=res.model_dump_json(),
+                        #     )
                         updated_db = await self.otp_repo.update_obj(
                             session=session,
                             obj_id=db_phone.id,
