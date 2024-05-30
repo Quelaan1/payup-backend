@@ -24,7 +24,7 @@ class ItemHandler:
         self.router = APIRouter()
 
         self.router.add_api_route(
-            "/healthz", self.hello, methods=["GET"], tags=["health-check"]
+            "/health", self.hello, methods=["GET"], tags=["health-check"]
         )
         self.router.add_api_route(
             "/",

@@ -272,3 +272,20 @@ class AccessTokenBlacklist(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     expires_on = Column(DateTime)
+
+
+class Promotion(Base):
+    __tablename__ = "promotions"
+    __table_args__ = {"schema": schema}
+
+    id = Column(Integer, primary_key=True)
+    discount = Column(String(50), nullable=False)
+    title = Column(String(100), nullable=False)
+    description = Column(String(255), nullable=True)
+    image_url = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.now(pytz.UTC).replace(tzinfo=None))
+    updated_at = Column(
+        DateTime,
+        default=datetime.now(pytz.UTC).replace(tzinfo=None),
+        onupdate=datetime.now(pytz.UTC).replace(tzinfo=None),
+    )

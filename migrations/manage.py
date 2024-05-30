@@ -90,7 +90,6 @@ def docker_compose_down():
 
 def main():
     try:
-
         docker_running, _ = run_command(["docker", "info"])
         if not docker_running:
             print("Docker is not running. Attempting to start Docker...")
