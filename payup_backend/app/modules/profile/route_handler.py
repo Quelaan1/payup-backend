@@ -24,7 +24,7 @@ class ProfileHandler:
         self.router = APIRouter()
 
         self.router.add_api_route(
-            "/healthz", self.hello, methods=["GET"], tags=["health-check"]
+            "/health", self.hello, methods=["GET"], tags=["health-check"]
         )
         self.router.add_api_route(
             "/",
@@ -63,7 +63,7 @@ class ProfileHandler:
         response = await self.profile_service.get_user_profile(
             obj_id=token_user.profile_id
         )
-        logger.info(response.model_dump())
+        # logger.info(response.model_dump())
         return response
 
     async def get_profile_endpoint(
@@ -94,7 +94,7 @@ class ProfileHandler:
 
         if str(obj_id) != token_user.profile_id:
             logger.info("ids didn't match")
-            raise TokenException(detail="different profile_id")
+            raise TokenException(detail="different profile_id", name="token_user")
 
         response = await self.profile_service.update_user_profile(
             obj_id=obj_id, update_model=req_body

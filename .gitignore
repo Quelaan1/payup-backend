@@ -37,6 +37,9 @@ flyway.toml
 *.lock
 .gcloudignore
 
+# Config files
+flyway.conf
+
 app.yaml
 
 # local files

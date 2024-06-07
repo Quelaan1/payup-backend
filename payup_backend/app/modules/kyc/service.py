@@ -11,6 +11,7 @@ from .model import (
     KycBase,
     KycResponse,
     KycCreate,
+    KycPanVerifyResponse,
     KycAadhaarResponse,
     KycLookupCreate,
     KycCreateRequest,
@@ -150,7 +151,7 @@ class KycService:
 
     async def pan_verify(
         self, profile_id: UUID, pan_id: str, name: str, consent: str, dob: str
-    ) -> ProfileResponse:
+    ) -> KycPanVerifyResponse:
         logger.info("checking: PAN %s for profile_id: %s", pan_id, profile_id)
         # verification = await self.sandbox_client.verifyPan(pan_number=pan_id)
         verification = await self.sandbox_client.verifyPan(
@@ -163,65 +164,85 @@ class KycService:
         )
         logger.info(verification)
 
-        if verification.Data.Status.lower() == "valid":
-            if not verification.Data.MatchName or not verification.Data.MatchDob:
-                # return wrong res
-
-                res = KycResponse(
-                    entity_id=verification.Data.Pan,
-                    entity_type=KycType.PAN,
-                    entity_name=name,
-                    message=verification.Data.Status,
-                    date_of_birth_match=verification.Data.MatchDob,
-                    name_as_per_pan_match=verification.Data.MatchName,
-                )
-
-                raise HTTPException(
-                    status_code=verification.Code, detail=res.model_dump()
-                )
-
-            # check data in db and create or retrieve
-            p_model = KycCreate(
+        if verification.Data.Status.lower() != "valid":
+            res = KycResponse(
                 entity_id=verification.Data.Pan,
-                entity_name=name.upper(),
                 entity_type=KycType.PAN,
-                verified=True,
-                category=verification.Data.Category,
-                status=verification.Data.Status,
+                entity_name=name,
+                message=verification.Data.Status,
+                date_of_birth_match=verification.Data.MatchDob,
+                name_as_per_pan_match=verification.Data.MatchName,
             )
 
-            async with self.sessionmaker() as session:
-                kyc_lookup_list = await self.lookup_repo.get_obj_by_filter(
-                    session=session,
-                    col_filters=[
-                        (self.lookup_repo.repo_schema.entity_id, p_model.entity_id),
-                        (
-                            self.lookup_repo.repo_schema.entity_type,
-                            p_model.entity_type.value,
-                        ),
-                    ],
-                )
-                if len(kyc_lookup_list) == 0:
-                    logger.info("no entry found for %s", p_model.entity_id)
-                    kyc = await self._repo.create_obj(session=session, p_model=p_model)
-                    kyc_lookup = await self.lookup_repo.create_obj(
-                        session=session,
-                        p_model=KycLookupCreate(
-                            entity_id=p_model.entity_id,
-                            entity_type=p_model.entity_type,
-                            kyc_entity_id=kyc.id,
-                        ),
-                    )
-                else:
-                    logger.info("entry found for %s", p_model.entity_id)
-                    logger.info("# of records found %s", len(kyc_lookup_list))
-                    kyc = await self._repo.get_obj(
-                        session=session, obj_id=kyc_lookup_list[0].kyc_entity_id
-                    )
-                await session.commit()
-            logger.info(kyc)
+            raise HTTPException(status_code=verification.Code, detail=res.model_dump())
 
-        return await self.create_pan_kyc(
+        if not verification.Data.MatchName or not verification.Data.MatchDob:
+            # return wrong res
+            async with self.sessionmaker() as session:
+                db_profile = await self.profile_repo.get_obj(
+                    session=session, obj_id=profile_id
+                )
+                await session.commit()
+            res = KycPanVerifyResponse.model_validate(db_profile)
+            res.date_of_birth_match = verification.Data.MatchDob
+            res.name_as_per_pan_match = verification.Data.MatchName
+            res.message = verification.Data.Status
+            return res
+            # res = KycResponse(
+            #     entity_id=verification.Data.Pan,
+            #     entity_type=KycType.PAN,
+            #     entity_name=name,
+            #     message=verification.Data.Status,
+            #     date_of_birth_match=verification.Data.MatchDob,
+            #     name_as_per_pan_match=verification.Data.MatchName,
+            # )
+
+            # raise HTTPException(
+            #     status_code=verification.Code, detail=res.model_dump()
+            # )
+
+        # check data in db and create or retrieve
+        p_model = KycCreate(
+            entity_id=verification.Data.Pan,
+            entity_name=name.upper(),
+            entity_type=KycType.PAN,
+            verified=True,
+            category=verification.Data.Category,
+            status=verification.Data.Status,
+        )
+
+        async with self.sessionmaker() as session:
+            kyc_lookup_list = await self.lookup_repo.get_obj_by_filter(
+                session=session,
+                col_filters=[
+                    (self.lookup_repo.repo_schema.entity_id, p_model.entity_id),
+                    (
+                        self.lookup_repo.repo_schema.entity_type,
+                        p_model.entity_type.value,
+                    ),
+                ],
+            )
+            if len(kyc_lookup_list) == 0:
+                logger.info("no entry found for %s", p_model.entity_id)
+                kyc = await self._repo.create_obj(session=session, p_model=p_model)
+                kyc_lookup = await self.lookup_repo.create_obj(
+                    session=session,
+                    p_model=KycLookupCreate(
+                        entity_id=p_model.entity_id,
+                        entity_type=p_model.entity_type,
+                        kyc_entity_id=kyc.id,
+                    ),
+                )
+            else:
+                logger.info("entry found for %s", p_model.entity_id)
+                logger.info("# of records found %s", len(kyc_lookup_list))
+                kyc = await self._repo.get_obj(
+                    session=session, obj_id=kyc_lookup_list[0].kyc_entity_id
+                )
+            await session.commit()
+        logger.info(kyc)
+
+        db_profile = await self.create_pan_kyc(
             kyc_data=KycCreateRequest(
                 entity_id=verification.Data.Pan,
                 entity_name=kyc.entity_name,
@@ -230,6 +251,11 @@ class KycService:
             ),
             profile_id=profile_id,
         )
+        res = KycPanVerifyResponse.model_validate(db_profile)
+        res.date_of_birth_match = verification.Data.MatchDob
+        res.name_as_per_pan_match = verification.Data.MatchName
+        res.message = verification.Data.Status
+        return res
 
     async def aadhaar_ekyc_otp(
         self,
@@ -371,6 +397,7 @@ class KycService:
                         ),
                     ],
                 )
+                logger.info("here")
                 if len(kyc_lookup_list) == 0:
                     logger.info("no entry found for %s", kyc_data.entity_id)
                     raise HTTPException(
@@ -383,6 +410,7 @@ class KycService:
                     session=session,
                     col_filters=[(self.user_repo.repo_schema.profile_id, profile_id)],
                 )
+                logger.info("%s", user_list)
                 kyc_relation = await self.relational_repo.get_or_create_obj(
                     session=session,
                     kyc_id=kyc_data.internal_id,

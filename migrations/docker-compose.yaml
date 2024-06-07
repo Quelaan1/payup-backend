@@ -10,7 +10,7 @@ services:
     volumes:
       - ./flyway/sql:/flyway/sql
       - ./flyway/conf:/flyway/conf
-      - $APPDATA/postgresql/root.crt:/certs/root.crt
+      - /Users/tilakkumar/Work/TurtleByte/root.crt:/root/.postgresql/root.crt
       - ./flyway/flyway_commands.sh:/flyway/flyway_commands.sh
     healthcheck:
       test: ["CMD-SHELL", "flyway", "info"]

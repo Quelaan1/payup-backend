@@ -29,7 +29,7 @@ class AuthHandler:
         self.router = APIRouter()
 
         self.router.add_api_route(
-            "/healthz", self.hello, methods=["GET"], tags=["health-check"]
+            "/health", self.hello, methods=["GET"], tags=["health-check"]
         )
         self.router.add_api_route(
             "/otp",
@@ -81,7 +81,7 @@ class AuthHandler:
 
     async def verify_otp_endpoint(self, form_data: OAuth2PinRequestForm = Depends()):
         otp_verify = OTPVerifyRequest(
-            otp=form_data.pin, phone_number=form_data.phone_number
+            otp=int(form_data.pin), phone_number=form_data.phone_number
         )
         profile_data = await self.auth_service.verify_otp(
             otp_verify.phone_number, otp_verify.otp
@@ -89,10 +89,15 @@ class AuthHandler:
         logger.info(profile_data.model_dump())
 
         token_data = await self.token_service.create_new_tokens(
-            profile_id=profile_data.id
+            profile_id=profile_data.profile.id,
+            user_id=profile_data.user_id,
         )
 
-        return AuthResponse(**token_data.model_dump(), profile_id=profile_data.id)
+        return AuthResponse(
+            **token_data.model_dump(),
+            profile_id=profile_data.profile.id,
+            user_id=profile_data.user_id
+        )
 
     async def set_pin_endpoint(self, data: Credential):
         # querying database to check if phone already exist
@@ -103,20 +108,25 @@ class AuthHandler:
     async def signin_endpoint(self, form_data: OAuth2PasswordRequestForm = Depends()):
         try:
             otp_verify = OTPVerifyRequest(
-                otp=form_data.password, phone_number=form_data.username
+                otp=int(form_data.password), phone_number=form_data.username
             )
 
-            profile_data = await self.auth_service.verify_otp(
+            profile_data_with_user_id = await self.auth_service.verify_otp(
                 otp_verify.phone_number, otp_verify.otp
             )
 
-            logger.info(profile_data.model_dump())
+            logger.info(profile_data_with_user_id.model_dump())
 
             token_data = await self.token_service.create_new_tokens(
-                profile_id=profile_data.id
+                profile_id=profile_data_with_user_id.profile.id,
+                user_id=profile_data_with_user_id.user_id,
             )
 
-            return AuthResponse(**token_data.model_dump(), profile_id=profile_data.id)
+            return AuthResponse(
+                **token_data.model_dump(),
+                profile_id=profile_data_with_user_id.profile.id,
+                user_id=profile_data_with_user_id.user_id
+            )
         except Exception as e:
             logger.info(e.args)
             raise HTTPException(

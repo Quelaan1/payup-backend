@@ -49,7 +49,7 @@ class Sandbox:
         }
 
         try:
-            response = requests.post(url, headers=headers, timeout=10)
+            response = requests.post(url, headers=headers, timeout=20)
             response.raise_for_status()
             data = response.json()
             self.access_token = data.get("access_token")
@@ -87,7 +87,7 @@ class Sandbox:
         logger.info("Refreshing token...")
 
         try:
-            response = requests.post(url, headers=headers, timeout=10)
+            response = requests.post(url, headers=headers, timeout=20)
             response.raise_for_status()
             data = response.json()
             # got 403 response
@@ -124,7 +124,7 @@ class Sandbox:
         try:
             payload = pan_data.model_dump(by_alias=True)
             logger.info("payload: \n%s", payload)
-            response = requests.post(url, headers=headers, timeout=10, json=payload)
+            response = requests.post(url, headers=headers, timeout=20, json=payload)
             logger.info("status code: %s", response.status_code)
             data = response.json()
 
@@ -135,7 +135,7 @@ class Sandbox:
                 code = data.get("code")
                 await self.refresh_token(code)
                 headers["Authorization"] = self.access_token
-                response = requests.post(url, headers=headers, timeout=10, json=payload)
+                response = requests.post(url, headers=headers, timeout=20, json=payload)
 
             if response.status_code == 400:
                 logger.info("request error..%s", str(response.content))
@@ -169,7 +169,7 @@ class Sandbox:
             "x-api-version": "1.0",
         }
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            response = requests.get(url, headers=headers, timeout=20)
             if response.status_code >= 400:
                 logger.info(
                     "Token expired. Refreshing token...%s", str(response.content)
@@ -178,7 +178,7 @@ class Sandbox:
                 code = data.get("code")
                 await self.refresh_token(code)
                 headers["Authorization"] = self.access_token
-                response = requests.get(url, headers=headers, timeout=10)
+                response = requests.get(url, headers=headers, timeout=20)
 
             response.raise_for_status()
             return SandboxPANVerifyResponse.model_validate(response.json())
@@ -218,7 +218,7 @@ class Sandbox:
                 await self.refresh_token(code)
                 headers["Authorization"] = self.access_token
                 response = requests.post(
-                    url, json=body.model_dump(), headers=headers, timeout=10
+                    url, json=body.model_dump(), headers=headers, timeout=20
                 )
 
             response.raise_for_status()
@@ -250,7 +250,7 @@ class Sandbox:
 
         try:
             payload = body.model_dump()
-            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            response = requests.post(url, json=payload, headers=headers, timeout=20)
             logger.info("status code: %s", response.status_code)
             data = response.json()
 
@@ -261,7 +261,7 @@ class Sandbox:
                 code = data.get("code")
                 await self.refresh_token(code)
                 headers["Authorization"] = self.access_token
-                response = requests.post(url, headers=headers, timeout=10, json=payload)
+                response = requests.post(url, headers=headers, timeout=20, json=payload)
                 data = response.json()
 
             if response.status_code == 400:

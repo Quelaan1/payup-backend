@@ -16,6 +16,7 @@ from ...cockroach_sql.db_enums import KycType
 from ...models.py_models import BaseResponse
 from ...config.constants import get_settings
 from ...helperClass.verifications.kyc_pan.sandbox.models import SplitAddressModel
+from ..profile.model import Profile
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,23 @@ class KycPanVerifyRequest(KycBase):
     name: str
     consent: str
     dob: str
+
+
+class KycPanVerifyResponse(Profile):
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        revalidate_instances="always",
+        validate_assignment=True,
+        extra="ignore",
+    )
+    name_as_per_pan_match: Optional[bool] = None
+    date_of_birth_match: Optional[bool] = None
+    message: Optional[str] = None
+
+
+def asd():
+    asd = KycPanVerifyResponse()
 
 
 class KycUpdate(KycBase):

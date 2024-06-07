@@ -6,6 +6,8 @@ from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 
+from payup_backend.app.modules import user
+
 logger = logging.getLogger(__name__)
 # Assuming you have similar configurations as in the Go code
 SECRET_KEY = "your_jwt_secret_key"
@@ -27,10 +29,7 @@ signup_oauth2_schema = OAuth2PasswordBearer(
 
 class UserClaim(BaseModel):
     profile_id: str
-    # first_name: Optional[str]
-    # last_name: Optional[str]
-    # email: Optional[str]
-    # browser_info: Optional[str]
+    user_id: str
 
 
 class UserAccessClaim(UserClaim):
@@ -118,8 +117,9 @@ class JWTAuth:
     def get_current_user(cls, token: str = Depends(signin_oauth2_schema)):
         token_dict = cls.decode(token)
         p_id = token_dict.get("profile_id")
-        if p_id is not None:
-            return UserClaim(profile_id=p_id)
+        u_id = token_dict.get("user_id")
+        if p_id is not None and u_id is not None:
+            return UserClaim(profile_id=p_id, user_id=u_id)
         raise jwt.InvalidTokenError
 
 

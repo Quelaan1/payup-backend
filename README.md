@@ -47,15 +47,19 @@ uvicorn payup_backend.main:app --reload
 # Endpoints
 
 - one account per phone number
-- search for phone in database  if exists already complete kyc : no need as transaction would be protected at transaction level.
+- search for phone in database if exists already complete kyc : no need as transaction would be protected at transaction level.
 - need access protection at user information level:
-    - phone pin
-    - biometric
+  - phone pin
+  - biometric
 - verifying:
-    - create new account if no account attached, else send user info.
+  - create new account if no account attached, else send user info.
 
 </br>
 
 ## /auth/otp - endpoint
 
 - update otp if phone already exist
+
+# Generate SQL Cert
+
+`curl --create-dirs -o $HOME/.postgresql/root.crt 'https://cockroachlabs.cloud/clusters/0143a66b-3c32-4f31-939e-345909a85f95/cert'`
