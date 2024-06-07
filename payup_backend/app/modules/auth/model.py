@@ -6,6 +6,8 @@ from datetime import datetime
 from pydantic import BaseModel, Field, UUID4, ConfigDict
 from fastapi.param_functions import Form
 
+from payup_backend.app.modules import user
+
 from ...models.py_models import BaseResponse
 from ..profile.model import Profile
 from ..token.model import TokenBody
@@ -91,6 +93,7 @@ class OTPVerifyRequest(OTPRequestBase):
 
 class AuthResponse(BaseResponse, TokenBody):
     profile_id: UUID4
+    user_id: UUID4
 
     # user_data: Profile
     # token_data: TokenBody

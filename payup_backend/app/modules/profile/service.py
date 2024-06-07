@@ -9,13 +9,10 @@ from fastapi import HTTPException, status
 
 from .model import ProfileUpdate
 from ...cockroach_sql.database import database
-from ...config.constants import get_settings
 from ...cockroach_sql.dao.profile_dao import ProfileRepo
 
 
 logger = logging.getLogger(__name__)
-
-constants = get_settings()
 
 
 class ProfileService:
@@ -30,10 +27,7 @@ class ProfileService:
         Arguments:
             conn_string {String} -- CockroachDB connection string.
         """
-        self.engine = database.engine
-        self.sessionmaker = sessionmaker(
-            bind=self.engine, class_=AsyncSession, expire_on_commit=False
-        )
+        self.sessionmaker = database.get_session()
 
         self._repo = ProfileRepo()
 

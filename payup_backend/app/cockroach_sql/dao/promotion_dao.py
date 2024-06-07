@@ -1,5 +1,5 @@
 import logging
-from ..schemas import Promotion as PromotionSchema
+from ..schemas import PromotionSchema
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ...modules.promotion.model import Promotion as PromotionModel

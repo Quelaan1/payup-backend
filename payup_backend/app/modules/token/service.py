@@ -54,7 +54,7 @@ class TokenService:
         self.user_repo = UserRepo()
         self.jwt_service = authentication.JWTAuth()
 
-    async def create_new_tokens(self, profile_id: UUID) -> TokenBody:
+    async def create_new_tokens(self, profile_id: UUID, user_id: UUID) -> TokenBody:
         """crates a new refresh token"""
         try:
             rt_jti = uuid4()
@@ -80,7 +80,7 @@ class TokenService:
                 await session.commit()
 
             return await self.get_token_strings(
-                profile_id=profile_id, rt_model=rt_model
+                profile_id=profile_id, rt_model=rt_model, user_id=user_id
             )
         except HTTPException as err:
             logger.error("error : %s", err)
@@ -190,7 +190,7 @@ class TokenService:
             ) from err
 
     async def get_token_strings(
-        self, rt_model: RefreshTokenModel, profile_id: UUID
+        self, rt_model: RefreshTokenModel, profile_id: UUID, user_id: UUID
     ) -> TokenBody:
         """crates a new refresh token"""
         try:
@@ -207,6 +207,7 @@ class TokenService:
                 iss=constants.JT.ISSUER,
                 sub=str(profile_id),
                 profile_id=str(profile_id),
+                user_id=str(user_id),
                 jti=str(rt_model.jti),
                 token_family=str(rt_model.id),
             )
@@ -218,6 +219,7 @@ class TokenService:
                 iss=constants.JT.ISSUER,
                 sub=str(profile_id),
                 profile_id=str(profile_id),
+                user_id=str(user_id),
                 jti=str(at_jti),
             )
 

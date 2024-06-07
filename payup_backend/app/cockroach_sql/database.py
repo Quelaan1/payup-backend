@@ -4,9 +4,11 @@ import tempfile
 import ssl
 
 # from sqlalchemy import create_engine, Engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.pool import QueuePool
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncEngine,
+    async_sessionmaker,
+)
 
 from ..config.constants import get_settings
 from ..helperClass.utils import get_db_cert
@@ -14,26 +16,20 @@ from ..helperClass.utils import get_db_cert
 logger = logging.getLogger(__name__)
 
 
-class Database(object):
-    """
-    Provides the database base functions.
-    """
-
+class Database:
     def __init__(self):
         self._engine = None
         self._db = ""
         self._connection = None
 
     @property
-    def engine(self):
+    def engine(self) -> AsyncEngine:
         """
         Returns the database engine.
         """
         config = get_settings()
 
         if self._engine is None:
-            self._db = config.COCKROACH.DB
-
             base_conn_str = f"cockroachdb+asyncpg://{config.COCKROACH.USER}:{config.COCKROACH.PASSWORD}@{config.COCKROACH.DB_URI}/{config.COCKROACH.DB}"
 
             if config.ENV == "local":
@@ -48,7 +44,6 @@ class Database(object):
                     cert_file.write(get_db_cert())
 
                 ssl_context = ssl.create_default_context(cafile=cert_file_path)
-
             else:
                 raise ValueError("environment value can be either local or prod")
 
@@ -66,12 +61,13 @@ class Database(object):
             )
         return self._engine
 
-    async def get_session(self) -> AsyncSession:
-        async_engine = await self.engine
-        async_session = sessionmaker(
-            async_engine, class_=AsyncSession, expire_on_commit=False
-        )
-        return async_session()
+    def get_session(self) -> async_sessionmaker:
+        """
+        Returns a new async sessionmaker object.
+        """
+        async_engine = self.engine  # Access the property, not call it as a method
+        async_session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
+        return async_session
 
 
 database = Database()

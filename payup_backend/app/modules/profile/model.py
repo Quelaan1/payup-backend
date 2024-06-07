@@ -15,7 +15,9 @@ class ProfileBase(BaseModel):
 class ProfileUpdateRequest(ProfileBase):
     """profile update request model"""
 
-    email: Annotated[Optional[EmailStr], Field(None, examples=list("dummy@email.com"))]
+    email: Annotated[
+        Optional[EmailStr], Field(None, examples=list("dummy@email.com"))
+    ] = None
     name: Optional[str] = None
 
     # @model_validator(mode="before")
@@ -54,3 +56,8 @@ class Profile(ProfileBase):
     kyc_complete: bool
     kyc_pan: bool
     kyc_uidai: bool
+
+
+class ProfileWithUserId(BaseModel):
+    user_id: UUID4
+    profile: Profile

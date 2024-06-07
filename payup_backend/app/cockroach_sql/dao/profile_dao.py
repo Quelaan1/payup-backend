@@ -47,7 +47,7 @@ class ProfileRepo:
         self, session: AsyncSession, p_model: ProfileCreate
     ) -> ProfileModel:
         """create profile entity in db"""
-        db_model = self.repo_schema(**p_model.model_dump(exclude=[""], by_alias=True))
+        db_model = self.repo_schema(**p_model.model_dump(by_alias=True))
         logger.info("db_model : %s", db_model)
         session.add(db_model)
         await session.flush()
@@ -76,7 +76,7 @@ class ProfileRepo:
                 name=__name__, detail=BaseResponse(message=f"{__name__} not found")
             )
 
-        update_data = p_model.model_dump(exclude=[""], exclude_unset=True)
+        update_data = p_model.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(db_model, key, value)
 
@@ -90,7 +90,7 @@ class ProfileRepo:
         stmt = delete(self.repo_schema).where(self.repo_schema.id == obj_id)
         result = session.execute(stmt)
         await session.flush()
-        logger.info("Rows updated: %s", result.rowcount)
+        logger.info("Rows updated: %s", result)
 
     async def get_obj_by_filter(
         self, session: AsyncSession, col_filters: list[tuple[Column, Any]]

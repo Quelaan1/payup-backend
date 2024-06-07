@@ -206,7 +206,7 @@ class PhoneEntity(Base):
         """
         Verify the password against the hashed password in the database.
         """
-        return pwd_context.verify(password, self.m_pin)
+        return pwd_context.verify(password, self.m_pin)  # type: ignore
 
 
 class Item(Base):
@@ -274,7 +274,7 @@ class AccessTokenBlacklist(Base):
     expires_on = Column(DateTime)
 
 
-class Promotion(Base):
+class PromotionSchema(Base):
     __tablename__ = "promotions"
     __table_args__ = {"schema": schema}
 
@@ -283,6 +283,80 @@ class Promotion(Base):
     title = Column(String(100), nullable=False)
     description = Column(String(255), nullable=True)
     image_url = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.now(pytz.UTC).replace(tzinfo=None))
+    updated_at = Column(
+        DateTime,
+        default=datetime.now(pytz.UTC).replace(tzinfo=None),
+        onupdate=datetime.now(pytz.UTC).replace(tzinfo=None),
+    )
+
+
+class NotificationPreferenceSchema(Base):
+    __tablename__ = "notification_preferences"
+    __table_args__ = {"schema": schema}
+    preference_id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID, ForeignKey(f"{schema}.users.id", ondelete="CASCADE"), nullable=False
+    )
+    preference_category = Column(String, nullable=False)
+    email = Column(Boolean, default=False)
+    sms = Column(Boolean, default=False)
+    push = Column(Boolean, default=False)
+    in_app = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.now(pytz.UTC).replace(tzinfo=None))
+    updated_at = Column(
+        DateTime,
+        default=datetime.now(pytz.UTC).replace(tzinfo=None),
+        onupdate=datetime.now(pytz.UTC).replace(tzinfo=None),
+    )
+
+
+class DeviceSchema(Base):
+    __tablename__ = "devices"
+    __table_args__ = {"schema": schema}
+    device_id = Column(UUID, primary_key=True)
+    user_id = Column(
+        UUID, ForeignKey(f"{schema}.users.id", ondelete="CASCADE"), nullable=False
+    )
+    device_type = Column(String, nullable=False)
+    last_used = Column(DateTime, default=datetime.now(pytz.UTC).replace(tzinfo=None))
+    created_at = Column(DateTime, default=datetime.now(pytz.UTC).replace(tzinfo=None))
+    updated_at = Column(
+        DateTime,
+        default=datetime.now(pytz.UTC).replace(tzinfo=None),
+        onupdate=datetime.now(pytz.UTC).replace(tzinfo=None),
+    )
+
+
+class DeviceTokenSchema(Base):
+    __tablename__ = "device_tokens"
+    __table_args__ = {"schema": schema}
+    token_id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    device_id = Column(
+        UUID,
+        ForeignKey(f"{schema}.devices.device_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    token = Column(String, nullable=False, unique=True)
+    token_purpose = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(pytz.UTC).replace(tzinfo=None))
+    updated_at = Column(
+        DateTime,
+        default=datetime.now(pytz.UTC).replace(tzinfo=None),
+        onupdate=datetime.now(pytz.UTC).replace(tzinfo=None),
+    )
+
+
+class NotificationSchema(Base):
+    __tablename__ = "notifications"
+    __table_args__ = {"schema": schema}
+    notification_id = Column(UUID, primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID, ForeignKey(f"{schema}.users.id", ondelete="CASCADE"), nullable=False
+    )
+    title = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    sent_at = Column(DateTime, default=datetime.now(pytz.UTC).replace(tzinfo=None))
     created_at = Column(DateTime, default=datetime.now(pytz.UTC).replace(tzinfo=None))
     updated_at = Column(
         DateTime,

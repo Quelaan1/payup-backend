@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated
 from fastapi import APIRouter, status, Depends, HTTPException
-
+from uuid import UUID
 from .service import KycService
 from .model import (
     KycBase,
@@ -70,7 +70,7 @@ class KycHandler:
         if req_body.entity_type != KycType.PAN:
             raise ValueError("Wrong entity_type.")
         res_body = await self.kyc_service.pan_verify(
-            profile_id=token_user.profile_id,
+            profile_id=UUID(token_user.profile_id),
             pan_id=req_body.entity_id,
             consent=req_body.consent,
             dob=req_body.dob,
@@ -88,9 +88,10 @@ class KycHandler:
         if req_body.entity_type != KycType.AADHAAR:
             raise ValueError("Wrong entity_type.")
         res_body = await self.kyc_service.aadhaar_ekyc_otp(
-            aadhaar_id=req_body.entity_id, profile_id=token_user.profile_id
+            aadhaar_id=req_body.entity_id, profile_id=UUID(token_user.profile_id)
         )
         logger.info(res_body.model_dump())
+
         return res_body
 
     async def check_aadhaar_otp_endpoint(
@@ -100,7 +101,7 @@ class KycHandler:
     ):
         logger.info(token_user.model_dump())
         res_body = await self.kyc_service.aadhaar_ekyc_verify(
-            profile_id=token_user.profile_id,
+            profile_id=UUID(token_user.profile_id),
             otp=req_body.otp,
             ref_id=req_body.ref_id,
             aadhaar_number=req_body.entity_id,
@@ -120,7 +121,7 @@ class KycHandler:
                 detail=f"{req_body.entity_type.name} not implemented",
             )
         res_body = await self.kyc_service.create_pan_kyc(
-            kyc_data=req_body, profile_id=token_user.profile_id
+            kyc_data=req_body, profile_id=UUID(token_user.profile_id)
         )
         logger.info(res_body.model_dump())
         return res_body
