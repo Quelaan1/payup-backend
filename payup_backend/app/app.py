@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from payup_backend.app.modules.device.route_handler import DeviceHandler
+from payup_backend.app.modules.device_token.route_handler import DeviceTokenHandler
 
 from .modules.auth.route_handler import AuthHandler
 from .modules.item.route_handler import ItemHandler
@@ -21,6 +22,7 @@ item = ItemHandler("item")
 token = TokenHandler("token")
 promotion = PromotionHandler()
 device = DeviceHandler("device")
+device_token = DeviceTokenHandler("device_token")
 
 router.include_router(auth.router, prefix="/auth", tags=["auth"])
 router.include_router(profile.router, prefix="/profile", tags=["profile"])
@@ -29,3 +31,6 @@ router.include_router(token.router, prefix="/token", tags=["token"])
 router.include_router(kyc.router, prefix="/kyc", tags=["kyc"])
 router.include_router(promotion.router, prefix="/promotion", tags=["promotion"])
 router.include_router(device.router, prefix="/device", tags=["device"])
+router.include_router(
+    device_token.router, prefix="/device-token", tags=["device_token"]
+)

@@ -200,7 +200,7 @@ class AuthService:
 
                 # Get profile data by user ID
                 data = await self.profile_repo.get_profile_by_user(
-                    session=session, user_id=phone_model.user_id
+                    session=session, user_id=phone_model.user_id # type: ignore
                 )
 
                 # Commit the session changes
@@ -208,7 +208,7 @@ class AuthService:
 
                 # Validate and return profile data
             return ProfileWithUserIdModel(
-                user_id=phone_model.user_id,
+                user_id=phone_model.user_id, # type: ignore
                 profile=ProfileModel.model_validate(data),
             )
 

@@ -5,8 +5,6 @@ from datetime import datetime, timezone
 
 
 class DeviceBase(BaseModel):
-    """minimum profile information"""
-
     model_config = ConfigDict(
         from_attributes=True, revalidate_instances="always", validate_assignment=True
     )
