@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "payup-backend"
+version = "0.1.0"
+description = ""
+authors = [""]
+readme = "README.md"
+
+[tool.poetry.scripts]
+db-migrations = "migrations.manage:main"
+db-truncate = "migrations.truncate_db:main"
+db-schema = "migrations.db_schema:main"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.110.0"
+uvicorn = { extras = ["standard"], version = "^0.27.1" }
+sqlalchemy = "^2.0.27"
+sqlalchemy-cockroachdb = "^2.0.2"
+passlib = "^1.7.4"
+pydantic-settings = "^2.2.1"
+requests = "^2.31.0"
+twilio = "^9.0.0"
+pydantic = { extras = ["email"], version = "^2.6.3" }
+psycopg2 = "^2.9.9"
+firebase-admin = "^6.4.0"
+pip = "^24.0"
+python-multipart = "^0.0.9"
+google-cloud-secret-manager = "^2.18.3"
+gunicorn = "^21.2.0"
+psycopg2-binary = "^2.9.9"
+pytz = "^2024.1"
+asyncpg = "^0.29.0"
+cryptography = "^42.0.5"
+sqlalchemy-data-model-visualizer = "^0.1.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

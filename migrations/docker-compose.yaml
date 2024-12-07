@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  flyway:
+    container_name: flyway
+    hostname: flyway
+    image: flyway/flyway
+    entrypoint: ["/flyway/flyway_commands.sh"]
+    volumes:
+      - ./flyway/sql:/flyway/sql
+      - ./flyway/conf:/flyway/conf
+      - ./flyway/conf/root.crt:/flyway/conf/root.crt
+      - ./flyway/flyway_commands.sh:/flyway/flyway_commands.sh
+    healthcheck:
+      test: ["CMD-SHELL", "flyway", "info"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

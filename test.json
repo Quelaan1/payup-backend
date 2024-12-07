@@ -1,0 +1,28 @@
+{
+    "header": {
+        "formName": null
+    },
+    "messages": [
+        {
+            "code": "EF00015",
+            "type": "REMARK",
+            "desc": "OTP VALIDATED.",
+            "fieldName": null
+        },
+        {
+            "code": "EF00003",
+            "type": "INFO",
+            "desc": "PAN is Active but details are not as per PAN.",
+            "fieldName": null
+        }
+    ],
+    "errors": [],
+    "reqId": "FOS003988589685",
+    "panNumber": "BADPP9397M",
+    "dob": "1990-11-12",
+    "areaCd": "91",
+    "fullName": "cmFodWwgcHJha2FzaA==",
+    "subStatus": "false",
+    "mobNo": "9990912228",
+    "otp": "GENERATED"
+}
